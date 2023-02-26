@@ -2,6 +2,7 @@ package org.codetracker.api;
 
 import gr.uom.java.xmi.LocationInfo.CodeElementType;
 import org.codetracker.element.Block;
+import org.codetracker.BlockTrackerGumTreeImpl;
 import org.codetracker.BlockTrackerImpl;
 import org.eclipse.jgit.lib.Repository;
 
@@ -65,7 +66,7 @@ public interface BlockTracker extends CodeTracker {
 
         public BlockTracker build() {
             checkInput();
-            return new BlockTrackerImpl(repository, startCommitId, filePath, methodName, methodDeclarationLineNumber,
+            return new BlockTrackerGumTreeImpl(repository, startCommitId, filePath, methodName, methodDeclarationLineNumber,
                     codeElementType, blockStartLineNumber, blockEndLineNumber);
         }
     }
