@@ -209,7 +209,7 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                                 && !diff.getOldPath().equals(diff.getNewPath())
                                 && !diff.getOldPath().equals("/dev/null")
                         ) {
-                            // Obtain the new file name
+                            // Obtain the new file name from git in case of rename
                             newLeftFilePath = diff.getOldPath();
                         }
                         rightMethodGT = methodToGumTree(rightMethod, source.tree, lrSource);
@@ -272,7 +272,6 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                             entry("TryStatement", CodeElementType.TRY_STATEMENT),
                             entry("IfStatement", CodeElementType.IF_STATEMENT)
                     );
-
                     Tree leftBlockGT = mappings.getDstForSrc(rightBlockGT);
 
                     // The method exists but the block doesn't, so it's newly introduced
@@ -293,24 +292,62 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                     Block leftBlock = leftMethod.findBlock(this::isEqualToBlockTree);
 
                     boolean bodyChange = false;
+                    boolean expressionChange = false;
                     for (Action action : actions.asList()) {
                         // Here check each action and derive the change made
-                        int actionStartline = startLine(lrSource, action.getNode());
+
+                        int actionStartLine = startLine(lrSource, action.getNode());
                         int actionEndLine = endLine(lrSource, action.getNode());
                         int blockStartLine = startLine(lrSource, rightBlockGT);
                         int blockEndLine = endLine(lrSource, rightBlockGT);
-                        if (actionStartline >= blockStartLine
-                                && actionEndLine <= blockEndLine) {
-                            blockChangeHistory.addChange(leftBlock, rightBlock, ChangeFactory.forBlock(Change.Type.BODY_CHANGE));
-                            blockChangeHistory.connectRelatedNodes();
-                            bodyChange = true;
-                            break;
+                        if (actionStartLine <= blockEndLine
+                                && actionEndLine >= blockStartLine) {
+                            Tree expression = null;
+                            for (Tree parent: action.getNode().getParents()){
+                                if (startLine(lrSource, parent) == blockStartLine && parent.getType().toString().contains("Expression")){
+                                    expression = parent;
+                                }
+                            }
+
+                            int expressionStartPos = -1;
+                            int expressionEndPos = -1;
+
+                            if (expression != null){
+                                expressionStartPos = expression.getPos();
+                                expressionEndPos = expression.getEndPos();
+                            }
+
+                            int actionStartPos = action.getNode().getPos();
+                            int actionEndPos = action.getNode().getEndPos();
+
+                            // check if a change was made within an expression
+                            if (actionStartPos <= expressionEndPos && actionEndPos >= expressionStartPos){
+                                expressionChange = true;
+                            }
+                            // check if a change was made within the body
+                            if (actionEndPos > expressionEndPos){
+                                bodyChange = true;
+                            }
+                            // if both types of changes are found, break loop
+                            if (bodyChange && expressionChange){
+                                break;
+                            }
                         }
                     }
 
-                    if (!bodyChange) {
+                    if (expressionChange){
+                        blockChangeHistory.addChange(leftBlock, rightBlock, ChangeFactory.forBlock(Change.Type.EXPRESSION_CHANGE));
+                    }
+
+                    if (bodyChange){
+                        blockChangeHistory.addChange(leftBlock, rightBlock, ChangeFactory.forBlock(Change.Type.BODY_CHANGE));
+                    }
+
+                    if (!bodyChange && !expressionChange) {
                         blockChangeHistory.addChange(leftBlock, rightBlock, ChangeFactory.of(AbstractChange.Type.NO_CHANGE));
                     }
+
+                    blockChangeHistory.connectRelatedNodes();
 
                     // add the parent block to continue tracking
                     if (leftBlock != null) {
