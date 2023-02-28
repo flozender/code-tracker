@@ -15,7 +15,7 @@ import org.eclipse.jgit.lib.Repository;
 
 public class BlockExperimentStarter extends AbstractExperimentStarter {
 
-  private static final String TOOL_NAME = "tracker";
+  private static final String TOOL_NAME = "gumtree";
   private static final String CODE_ELEMENT_NAME = "block";
 
   public static void main(String[] args) throws IOException {
