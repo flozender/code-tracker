@@ -22,7 +22,6 @@ import org.codetracker.change.ChangeFactory;
 import org.codetracker.element.Block;
 import org.codetracker.element.Method;
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.ResetCommand;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.lib.Repository;
 
@@ -190,11 +189,10 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                     // CHANGE BODY OR DOCUMENT
                     // If the method body has changed between commits but signature remains the same
                     leftMethod = getMethod(leftModel, parentVersion, rightMethod::equalIdentifierIgnoringVersionAndDocumentAndBody);
-                    // Checkout commit to get file contents at the current commit
-                    git.reset().setMode(ResetCommand.ResetType.HARD).setRef(commitId).call();
-                    GumTreeSource source = new GumTreeSource(repository, rightBlock.getFilePath());
 
-                    LineReader lrSource = getLineReader(source.completeFilePath);
+                    GumTreeSource source = new GumTreeSource(repository, commitId, rightBlock.getFilePath());
+
+                    LineReader lrSource = getLineReader(source.fileContent);
 
                     Tree rightMethodGT = null;
                     String newLeftFilePath = null;
@@ -217,21 +215,20 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
 
                     Tree rightBlockGT = blockToGumTree(rightBlock, source.tree, lrSource);
 
-                    git.reset().setMode(ResetCommand.ResetType.HARD).setRef(parentCommitId).call();
 
 
                     GumTreeSource destination = null;
 
                     if (leftMethod != null) {
-                        destination = new GumTreeSource(repository, leftMethod.getFilePath());
+                        destination = new GumTreeSource(repository, parentCommitId, leftMethod.getFilePath());
                     }
 
                     if (destination == null || destination.tree == null) {
-                        destination = new GumTreeSource(repository, rightMethod.getFilePath());
+                        destination = new GumTreeSource(repository, parentCommitId, rightMethod.getFilePath());
                     }
 
                     if (destination == null || destination.tree == null) {
-                        destination = new GumTreeSource(repository, newLeftFilePath);
+                        destination = new GumTreeSource(repository, parentCommitId, newLeftFilePath);
                     }
 
                     // If the file is still not found, it can't be found by GumTree anymore
@@ -248,7 +245,7 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
 
                     EditScriptGenerator editScriptGenerator = new SimplifiedChawatheScriptGenerator();
                     EditScript actions = editScriptGenerator.computeActions(mappings);
-                    LineReader lrDestination = getLineReader(destination.completeFilePath);
+                    LineReader lrDestination = getLineReader(destination.fileContent);
 
                     Tree leftBlockGT = mappings.getDstForSrc(rightBlockGT);
 
@@ -379,20 +376,19 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
     }
 
     public class GumTreeSource {
-        // filePath within the repo
+        // filePaths within the repo
         String filePath = null;
-        // filePath from the source folder
-        String completeFilePath = null;
+        // File content
+        String fileContent = null;
         // GumTree JDT Tree object
         Tree tree = null;
 
-        public GumTreeSource(Repository repository, String relativeFilePath) {
+        public GumTreeSource(Repository repository, String commitId, String filePath) {
             try {
-                filePath = relativeFilePath;
-                completeFilePath = repository.getDirectory().getParent() + "/" + filePath;
-                tree = new JdtTreeGenerator().generateFrom().file(completeFilePath).getRoot();
-            } catch (Exception e) {
-            }
+                this.filePath = filePath;
+                this.fileContent = getFileContent(repository, commitId, filePath);
+                this.tree = new JdtTreeGenerator().generateFrom().string(this.fileContent).getRoot();
+            } catch (Exception e) {}
         }
     }
 

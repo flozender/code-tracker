@@ -3,6 +3,7 @@ package org.codetracker.util;
 import com.github.gumtreediff.io.LineReader;
 import com.github.gumtreediff.tree.Tree;
 import gr.uom.java.xmi.UMLAnnotation;
+import gr.uom.java.xmi.UMLModel;
 import org.codetracker.element.Method;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -17,14 +18,16 @@ import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
+import org.refactoringminer.rm1.GitHistoryRefactoringMinerImpl;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.StringReader;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class Util {
@@ -154,8 +157,20 @@ public class Util {
         }
     }
 
-    public static LineReader getLineReader(String filePath) throws IOException {
-        LineReader lr = new LineReader(new BufferedReader(new FileReader(filePath)));
+    public static String getFileContent(Repository repository, String commitId, String fileName) throws Exception {
+        if (fileName == null)
+            return null;
+        Set<String> repositoryDirectories = new LinkedHashSet<>();
+        Map<String, String> fileContents = new LinkedHashMap<>();
+        try (RevWalk walk = new RevWalk(repository)) {
+            RevCommit revCommit = walk.parseCommit(repository.resolve(commitId));
+            GitHistoryRefactoringMinerImpl.populateFileContents(repository, revCommit, Collections.singleton(fileName), fileContents, repositoryDirectories);
+            return fileContents.get(fileName);
+        }
+    }
+
+    public static LineReader getLineReader(String fileContent) throws IOException {
+        LineReader lr = new LineReader(new BufferedReader(new StringReader(fileContent)));
         // wait till LineReader is done reading
         while ((lr.read()) != -1) {}
         lr.close();
