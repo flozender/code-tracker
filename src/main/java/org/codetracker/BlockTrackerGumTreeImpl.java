@@ -249,8 +249,25 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                     EditScriptGenerator editScriptGenerator = new SimplifiedChawatheScriptGenerator();
                     EditScript actions = editScriptGenerator.computeActions(mappings);
                     LineReader lrDestination = getLineReader(destination.completeFilePath);
+
+                    Tree leftBlockGT = mappings.getDstForSrc(rightBlockGT);
+
                     if (leftMethod == null && rightMethodGT != null) {
                         Tree leftMethodGT = mappings.getDstForSrc(rightMethodGT);
+
+                        // if a block was mapped but the parent method was unmapped
+                        // (the block moved another method wasn't mapped to the original method)
+                        if (leftMethodGT == null && leftBlockGT != null){
+                            // find and map the parent method of the block that did match
+                            for (Tree blockParent : leftBlockGT.getParents()){
+                                if (blockParent.getType().toString().equals("MethodDeclaration")){
+                                    leftMethodGT = blockParent;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // if both left method and block are unmapped
                         if (leftMethodGT == null) {
                             Block blockBefore = Block.of(rightBlock.getComposite(), rightBlock.getOperation(), parentVersion);
                             blockChangeHistory.handleAdd(blockBefore, rightBlock, "added with method");
@@ -272,7 +289,7 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                             entry("TryStatement", CodeElementType.TRY_STATEMENT),
                             entry("IfStatement", CodeElementType.IF_STATEMENT)
                     );
-                    Tree leftBlockGT = mappings.getDstForSrc(rightBlockGT);
+
 
                     // The method exists but the block doesn't, so it's newly introduced
                     if (leftBlockGT == null) {
