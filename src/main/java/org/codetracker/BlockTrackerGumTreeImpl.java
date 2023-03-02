@@ -281,10 +281,15 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
 
                     Map<String, CodeElementType> treeToBlockType = Map.ofEntries(
                             entry("ForStatement", CodeElementType.FOR_STATEMENT),
+                            entry("EnhancedForStatement", CodeElementType.ENHANCED_FOR_STATEMENT),
+                            entry("WhileStatement", CodeElementType.WHILE_STATEMENT),
+                            entry("DoStatement", CodeElementType.DO_STATEMENT),
                             entry("TryStatement", CodeElementType.TRY_STATEMENT),
-                            entry("IfStatement", CodeElementType.IF_STATEMENT)
+                            entry("IfStatement", CodeElementType.IF_STATEMENT),
+                            entry("CatchClause", CodeElementType.CATCH_CLAUSE),
+                            entry("SwitchStatement", CodeElementType.SWITCH_STATEMENT),
+                            entry("SynchronizedStatement", CodeElementType.SYNCHRONIZED_STATEMENT)
                     );
-
 
                     // The method exists but the block doesn't, so it's newly introduced
                     if (leftBlockGT == null) {
@@ -305,33 +310,76 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
 
                     boolean bodyChange = false;
                     boolean expressionChange = false;
+                    boolean catchClauseChange = false;
+                    boolean finallyBlockChange = false;
+
                     for (Action action : actions.asList()) {
                         // Here check each action and derive the change made
                         CodeElementRange actionRange = new CodeElementRange(action.getNode(), lrSource);
                         CodeElementRange blockRange = new CodeElementRange(rightBlockGT, lrSource);
 
-                        if (actionRange.startLine <= blockRange.endLine
-                                && actionRange.endLine >= blockRange.startLine) {
+                        if (actionOverlapsElement(actionRange, blockRange, true)) {
+
                             Tree expression = null;
+                            Tree body = null;
+                            ArrayList<Tree> catchClauses = new ArrayList<>();
+                            Tree finallyBlock = null;
+
                             for (Tree parent: action.getNode().getParents()){
-                                System.out.println("Parent type " +  parent.getType().toString());
-                                if (startLine(parent, lrSource) == blockRange.startLine && parent.getType().toString().contains("Expression")){
-                                    expression = parent;
+                                CodeElementRange parentRange = new CodeElementRange(parent, lrSource);
+                                // if the action parent start line matches our block's start line
+                                // we have our element
+                                if (parentRange.startLine == blockRange.startLine &&
+                                        (parent.getType().toString().contains("Statement") ||
+                                                parent.getType().toString().equals("CatchClause"))) {
+                                        // obtain statement body, expression, and catch/finally positions (if any)
+                                        for (Tree child: parent.getChildren()){
+                                            String childType = child.getType().toString();
+                                            switch (childType) {
+                                                case "InstanceofExpression":
+                                                    expression = child;
+                                                    break;
+                                                case "Block":
+                                                    if (body == null){
+                                                        body = child;
+                                                    } else {
+                                                        finallyBlock = child;
+                                                    }
+                                                    break;
+                                                case "CatchClause":
+                                                    catchClauses.add(child);
+                                                    break;
+                                            }
+                                        }
                                 }
                             }
 
+                            CodeElementRange bodyRange = new CodeElementRange(body, lrSource);
                             CodeElementRange expressionRange = new CodeElementRange(expression, lrSource);
+                            CodeElementRange catchClauseRange = new CodeElementRange(catchClauses, lrSource);
+                            CodeElementRange finallyBlockRange = new CodeElementRange(finallyBlock, lrSource);
 
                             // check if a change was made within an expression
-                            if (actionRange.startPosition <= expressionRange.endPosition && actionRange.endPosition >= expressionRange.startPosition){
+                            if (actionOverlapsElement(actionRange, expressionRange)){
                                 expressionChange = true;
                             }
                             // check if a change was made within the body
-                            if (actionRange.endPosition > expressionRange.endPosition){
+                            if (actionOverlapsElement(actionRange, bodyRange)){
                                 bodyChange = true;
                             }
-                            // if both types of changes are found, break loop
-                            if (bodyChange && expressionChange){
+                            // check if a change was made within a 'catch' clause
+                            if (actionOverlapsElement(actionRange, catchClauseRange)){
+                                catchClauseChange = true;
+                            }
+
+                            // check if a change was made within the 'finally' clause
+                            if (actionOverlapsElement(actionRange, finallyBlockRange)){
+                                finallyBlockChange = true;
+                            }
+
+                            // if all types of changes are found, break loop
+//                             && catchClauseChange
+                            if (bodyChange && expressionChange && catchClauseChange && finallyBlockChange){
                                 break;
                             }
                         }
@@ -345,7 +393,15 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                         blockChangeHistory.addChange(leftBlock, rightBlock, ChangeFactory.forBlock(Change.Type.BODY_CHANGE));
                     }
 
-                    if (!bodyChange && !expressionChange) {
+                    if (catchClauseChange){
+                        blockChangeHistory.addChange(leftBlock, rightBlock, ChangeFactory.forBlock(Change.Type.CATCH_BLOCK_CHANGE));
+                    }
+
+                    if (finallyBlockChange){
+                        blockChangeHistory.addChange(leftBlock, rightBlock, ChangeFactory.forBlock(Change.Type.FINALLY_BLOCK_CHANGE));
+                    }
+
+                    if (!bodyChange && !expressionChange && !catchClauseChange && !finallyBlockChange) {
                         blockChangeHistory.addChange(leftBlock, rightBlock, ChangeFactory.of(AbstractChange.Type.NO_CHANGE));
                     }
 
@@ -381,10 +437,10 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
     }
 
     public class CodeElementRange {
-        int startLine = -1;
-        int endLine = -1;
-        int startPosition = -1;
-        int endPosition = -1;
+        public int startLine = -1;
+        public int endLine = -1;
+        public int startPosition = -1;
+        public int endPosition = -1;
 
         public CodeElementRange(Tree codeElement, LineReader lr){
             if (codeElement == null) {
@@ -394,6 +450,28 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
             this.endPosition = codeElement.getEndPos();
             this.startLine = startLine(codeElement, lr);
             this.endLine = endLine(codeElement, lr);
+        }
+
+        public CodeElementRange(ArrayList<Tree> codeElements, LineReader lr){
+            if (codeElements == null || codeElements.size() == 0) {
+                return;
+            }
+            int startPosition = Integer.MAX_VALUE;
+            int endPosition = 0;
+
+            for (Tree codeElement : codeElements){
+                startPosition = Math.min(startPosition, codeElement.getPos());
+                endPosition = Math.max(endPosition, codeElement.getEndPos());
+            }
+            this.startPosition = startPosition;
+            this.endPosition = endPosition;
+            this.startLine = startLine(this.startPosition, lr);
+            this.endLine = endLine(this.endPosition, lr);
+        }
+
+        @Override
+        public String toString() {
+            return "Lines: (" + startLine + ", " + endLine + "), Positions: (" + startPosition + ", " + endPosition + ")";
         }
     }
 
