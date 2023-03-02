@@ -177,11 +177,11 @@ public class Util {
         return lr;
     }
 
-    public static int startLine(LineReader lr, Tree tree){
+    public static int startLine(Tree tree, LineReader lr){
         return lr.positionFor(tree.getPos())[0];
     }
 
-    public static int endLine(LineReader lr, Tree tree){
+    public static int endLine(Tree tree, LineReader lr){
         return lr.positionFor(tree.getEndPos())[0];
     }
 }

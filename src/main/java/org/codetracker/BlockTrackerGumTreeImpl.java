@@ -63,8 +63,8 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
         int methodEndLine = method.getLocation().getEndLine();
         for (Tree descendant : sourceTree.getDescendants()) {
             if (descendant.getType().toString().equals("MethodDeclaration")) {
-                int descendantStartLine = startLine(lr, descendant);
-                int descendantEndLine = endLine(lr, descendant);
+                int descendantStartLine = startLine(descendant, lr);
+                int descendantEndLine = endLine(descendant, lr);
                 if (descendantStartLine == methodStartLine && descendantEndLine == methodEndLine) {
                     methodGT = descendant;
                     break;
@@ -79,8 +79,8 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
         Tree blockGT = null;
         for (Tree descendant : sourceTree.getDescendants()) {
             if (descendant.getType().toString().equalsIgnoreCase(blockType.getName() + "Statement")) {
-                int descendantStartLine = startLine(lr, descendant);
-                int descendantEndLine = endLine(lr, descendant);
+                int descendantStartLine = startLine(descendant, lr);
+                int descendantEndLine = endLine(descendant, lr);
                 if (descendantStartLine == block.getLocation().getStartLine()
                         && descendantEndLine == block.getLocation().getEndLine()) {
                     blockGT = descendant;
@@ -215,8 +215,6 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
 
                     Tree rightBlockGT = blockToGumTree(rightBlock, source.tree, lrSource);
 
-
-
                     GumTreeSource destination = null;
 
                     if (leftMethod != null) {
@@ -274,8 +272,8 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                         }
 
                         // Set attributes for matching method predicate
-                        this.methodStartLineNumberTree = startLine(lrDestination, leftMethodGT);
-                        this.methodEndLineNumberTree = endLine(lrDestination, leftMethodGT);
+                        this.methodStartLineNumberTree = startLine(leftMethodGT, lrDestination);
+                        this.methodEndLineNumberTree = endLine(leftMethodGT, lrDestination);
 
                         leftModel = getUMLModel(parentCommitId, Collections.singleton(destination.filePath));
                         leftMethod = getMethod(leftModel, parentVersion, this::isEqualToMethodTree);
@@ -300,8 +298,8 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                     // Set attributes for matching block predicate
                     this.treeType = treeToBlockType.get(leftBlockGT.getType().name);
 
-                    this.blockStartLineNumberTree = startLine(lrDestination, leftBlockGT);
-                    this.blockEndLineNumberTree = endLine(lrDestination, leftBlockGT);
+                    this.blockStartLineNumberTree = startLine(leftBlockGT, lrDestination);
+                    this.blockEndLineNumberTree = endLine(leftBlockGT, lrDestination);
 
                     Block leftBlock = leftMethod.findBlock(this::isEqualToBlockTree);
 
@@ -309,37 +307,27 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                     boolean expressionChange = false;
                     for (Action action : actions.asList()) {
                         // Here check each action and derive the change made
+                        CodeElementRange actionRange = new CodeElementRange(action.getNode(), lrSource);
+                        CodeElementRange blockRange = new CodeElementRange(rightBlockGT, lrSource);
 
-                        int actionStartLine = startLine(lrSource, action.getNode());
-                        int actionEndLine = endLine(lrSource, action.getNode());
-                        int blockStartLine = startLine(lrSource, rightBlockGT);
-                        int blockEndLine = endLine(lrSource, rightBlockGT);
-                        if (actionStartLine <= blockEndLine
-                                && actionEndLine >= blockStartLine) {
+                        if (actionRange.startLine <= blockRange.endLine
+                                && actionRange.endLine >= blockRange.startLine) {
                             Tree expression = null;
                             for (Tree parent: action.getNode().getParents()){
-                                if (startLine(lrSource, parent) == blockStartLine && parent.getType().toString().contains("Expression")){
+                                System.out.println("Parent type " +  parent.getType().toString());
+                                if (startLine(parent, lrSource) == blockRange.startLine && parent.getType().toString().contains("Expression")){
                                     expression = parent;
                                 }
                             }
 
-                            int expressionStartPos = -1;
-                            int expressionEndPos = -1;
-
-                            if (expression != null){
-                                expressionStartPos = expression.getPos();
-                                expressionEndPos = expression.getEndPos();
-                            }
-
-                            int actionStartPos = action.getNode().getPos();
-                            int actionEndPos = action.getNode().getEndPos();
+                            CodeElementRange expressionRange = new CodeElementRange(expression, lrSource);
 
                             // check if a change was made within an expression
-                            if (actionStartPos <= expressionEndPos && actionEndPos >= expressionStartPos){
+                            if (actionRange.startPosition <= expressionRange.endPosition && actionRange.endPosition >= expressionRange.startPosition){
                                 expressionChange = true;
                             }
                             // check if a change was made within the body
-                            if (actionEndPos > expressionEndPos){
+                            if (actionRange.endPosition > expressionRange.endPosition){
                                 bodyChange = true;
                             }
                             // if both types of changes are found, break loop
@@ -389,6 +377,23 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                 this.fileContent = getFileContent(repository, commitId, filePath);
                 this.tree = new JdtTreeGenerator().generateFrom().string(this.fileContent).getRoot();
             } catch (Exception e) {}
+        }
+    }
+
+    public class CodeElementRange {
+        int startLine = -1;
+        int endLine = -1;
+        int startPosition = -1;
+        int endPosition = -1;
+
+        public CodeElementRange(Tree codeElement, LineReader lr){
+            if (codeElement == null) {
+                return;
+            }
+            this.startPosition = codeElement.getPos();
+            this.endPosition = codeElement.getEndPos();
+            this.startLine = startLine(codeElement, lr);
+            this.endLine = endLine(codeElement, lr);
         }
     }
 
