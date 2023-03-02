@@ -4,6 +4,7 @@ import com.github.gumtreediff.io.LineReader;
 import com.github.gumtreediff.tree.Tree;
 import gr.uom.java.xmi.UMLAnnotation;
 import gr.uom.java.xmi.UMLModel;
+import org.codetracker.BlockTrackerGumTreeImpl.CodeElementRange;
 import org.codetracker.element.Method;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -178,10 +179,31 @@ public class Util {
     }
 
     public static int startLine(Tree tree, LineReader lr){
-        return lr.positionFor(tree.getPos())[0];
+        return startLine(tree.getPos(), lr);
+    }
+
+    public static int startLine(int startPosition, LineReader lr){
+        return lr.positionFor(startPosition)[0];
     }
 
     public static int endLine(Tree tree, LineReader lr){
-        return lr.positionFor(tree.getEndPos())[0];
+        return endLine(tree.getEndPos(), lr);
+    }
+
+    public static int endLine(int endPosition, LineReader lr){
+        return lr.positionFor(endPosition)[0];
+    }
+
+    public static boolean actionOverlapsElement(CodeElementRange actionRange, CodeElementRange codeElementRange) {
+        return actionOverlapsElement(actionRange, codeElementRange, false);
+    }
+
+    public static boolean actionOverlapsElement(CodeElementRange actionRange, CodeElementRange codeElementRange, boolean line) {
+        if (line){
+        return actionRange.startLine <= codeElementRange.endLine
+                && actionRange.endLine >= codeElementRange.startLine;
+        }
+        return actionRange.startPosition <= codeElementRange.endPosition
+                && actionRange.endPosition >= codeElementRange.startPosition;
     }
 }
