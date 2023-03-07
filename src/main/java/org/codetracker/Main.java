@@ -27,13 +27,13 @@ public class Main {
 
             BlockTracker blockTracker = CodeTracker.blockTracker()
             .repository(repository)
-            .filePath("src/main/java/com/puppycrawl/tools/checkstyle/Checker.java")
-            .startCommitId("119fd4fb33bef9f5c66fc950396669af842c21a3")
+            .filePath("src/checkstyle/com/puppycrawl/tools/checkstyle/Checker.java")
+            .startCommitId("f55fcd5462624e611212b0b6c41e842d1adfa9f2")
             .methodName("setupChild")
-            .methodDeclarationLineNumber(448)
-            .codeElementType(LocationInfo.CodeElementType.TRY_STATEMENT)
-            .blockStartLineNumber(453)
-            .blockEndLineNumber(465)
+            .methodDeclarationLineNumber(179)
+            .codeElementType(LocationInfo.CodeElementType.IF_STATEMENT)
+            .blockStartLineNumber(190)
+            .blockEndLineNumber(205)
             .build();
 
             History<Block> blockHistory = blockTracker.track();

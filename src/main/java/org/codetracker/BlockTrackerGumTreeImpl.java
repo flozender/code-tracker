@@ -329,9 +329,13 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                                 CodeElementRange parentRange = new CodeElementRange(parent, lrSource);
                                 // if the action parent start line matches our block's start line
                                 // we have our element
+                                // the last condition handles cases of multiple if/else blocks
+                                // where the start line doesn't match block start line
                                 if (parentRange.startLine == blockRange.startLine &&
                                         (parent.getType().toString().contains("Statement") ||
-                                                parent.getType().toString().equals("CatchClause"))) {
+                                                parent.getType().toString().equals("CatchClause")) ||
+                                                (parent.getType().toString().equals("IfStatement") &&
+                                                        parentRange.endLine == blockRange.endLine)) {
                                         // obtain statement body, expression, and catch/finally positions (if any)
                                         for (Tree child: parent.getChildren()){
                                             String childType = child.getType().toString();
@@ -401,7 +405,7 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                         blockChangeHistory.addChange(leftBlock, rightBlock, ChangeFactory.forBlock(Change.Type.FINALLY_BLOCK_CHANGE));
                     }
 
-                    if (!bodyChange && !expressionChange && !catchClauseChange && !finallyBlockChange) {
+                    if (!(bodyChange || expressionChange || catchClauseChange || finallyBlockChange)) {
                         blockChangeHistory.addChange(leftBlock, rightBlock, ChangeFactory.of(AbstractChange.Type.NO_CHANGE));
                     }
 
@@ -415,7 +419,7 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                 }
             }
 
-            return new HistoryImpl<>(blockChangeHistory.findSubGraph(startBlock), historyReport);
+            return new HistoryImpl<>(blockChangeHistory.getCompleteGraph(), historyReport);
         }
     }
 
