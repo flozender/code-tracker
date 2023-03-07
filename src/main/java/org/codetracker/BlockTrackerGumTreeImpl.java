@@ -382,7 +382,7 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                             }
 
                             // if all types of changes are found, break loop
-//                             && catchClauseChange
+                            // && catchClauseChange
                             if (bodyChange && expressionChange && catchClauseChange && finallyBlockChange){
                                 break;
                             }
