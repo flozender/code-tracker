@@ -27,13 +27,13 @@ public class Main {
 
             BlockTrackerGumTree blockTracker = CodeTracker.blockTrackerGumTree()
                     .repository(repository)
-                    .filePath("src/checkstyle/com/puppycrawl/tools/checkstyle/TreeWalker.java")
-                    .startCommitId("abff1a2489ea8af10e1bc0a335551262d22f44e7")
-                    .methodName("process")
-                    .methodDeclarationLineNumber(402)
-                    .codeElementType(LocationInfo.CodeElementType.FOR_STATEMENT)
-                    .blockStartLineNumber(404)
-                    .blockEndLineNumber(406)
+                    .filePath("src/main/java/com/puppycrawl/tools/checkstyle/Checker.java")
+                    .startCommitId("119fd4fb33bef9f5c66fc950396669af842c21a3")
+                    .methodName("fireErrors")
+                    .methodDeclarationLineNumber(377)
+                    .codeElementType(LocationInfo.CodeElementType.ENHANCED_FOR_STATEMENT)
+                    .blockStartLineNumber(387)
+                    .blockEndLineNumber(395)
                     .build();
 
             History<Block> blockHistory = blockTracker.track();
