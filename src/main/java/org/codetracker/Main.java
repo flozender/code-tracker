@@ -26,15 +26,15 @@ public class Main {
                 "https://github.com/checkstyle/checkstyle.git")) {
 
             BlockTracker blockTracker = CodeTracker.blockTracker()
-            .repository(repository)
-            .filePath("src/checkstyle/com/puppycrawl/tools/checkstyle/Checker.java")
-            .startCommitId("f55fcd5462624e611212b0b6c41e842d1adfa9f2")
-            .methodName("setupChild")
-            .methodDeclarationLineNumber(179)
-            .codeElementType(LocationInfo.CodeElementType.IF_STATEMENT)
-            .blockStartLineNumber(190)
-            .blockEndLineNumber(205)
-            .build();
+                    .repository(repository)
+                    .filePath("src/checkstyle/com/puppycrawl/tools/checkstyle/TreeWalker.java")
+                    .startCommitId("abff1a2489ea8af10e1bc0a335551262d22f44e7")
+                    .methodName("process")
+                    .methodDeclarationLineNumber(402)
+                    .codeElementType(LocationInfo.CodeElementType.FOR_STATEMENT)
+                    .blockStartLineNumber(404)
+                    .blockEndLineNumber(406)
+                    .build();
 
             History<Block> blockHistory = blockTracker.track();
 

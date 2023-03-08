@@ -261,6 +261,23 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                                 }
                             }
                         }
+                        // if method was not found and the block was not mapped
+                        // try to see if the method moved to another file
+                        if (leftMethodGT == null){
+                            List<DiffEntry> changedFiles = listDiff(repository, git, commitId, parentCommitId);
+                            for (DiffEntry file : changedFiles){
+                                String additionalFilePath = file.getOldPath();
+                                GumTreeSource additionalDestination = new GumTreeSource(repository, parentCommitId, additionalFilePath);
+                                MappingStore additionalMappings = defaultMatcher.match(source.tree, additionalDestination.tree);
+                                leftMethodGT = additionalMappings.getDstForSrc(rightMethodGT);
+                                if (leftMethodGT != null) {
+                                    destination = additionalDestination;
+                                    lrDestination = getLineReader(destination.fileContent);
+                                    leftBlockGT = additionalMappings.getDstForSrc(rightBlockGT);
+                                    break;
+                                }
+                            }
+                        }
 
                         // if both left method and block are unmapped
                         if (leftMethodGT == null) {

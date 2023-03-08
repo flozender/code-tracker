@@ -157,6 +157,12 @@ public class Util {
             return diffList.get(0);
         }
     }
+    public static List<DiffEntry> listDiff(Repository repository, Git git, String oldCommit, String newCommit) throws GitAPIException, IOException {
+        return git.diff()
+                .setOldTree(prepareTreeParser(repository, oldCommit))
+                .setNewTree(prepareTreeParser(repository, newCommit))
+                .call();
+    }
 
     public static String getFileContent(Repository repository, String commitId, String fileName) throws Exception {
         if (fileName == null)
