@@ -2,10 +2,10 @@ package org.codetracker.api;
 
 import gr.uom.java.xmi.LocationInfo.CodeElementType;
 import org.codetracker.element.Block;
-import org.codetracker.BlockTrackerImpl;
+import org.codetracker.BlockTrackerGumTreeImpl;
 import org.eclipse.jgit.lib.Repository;
 
-public interface BlockTracker extends CodeTracker {
+public interface BlockTrackerGumTree extends CodeTracker {
 
     History<Block> track() throws Exception;
 
@@ -19,27 +19,27 @@ public interface BlockTracker extends CodeTracker {
         private int blockStartLineNumber;
         private int blockEndLineNumber;
 
-        public BlockTracker.Builder repository(Repository repository) {
+        public BlockTrackerGumTree.Builder repository(Repository repository) {
             this.repository = repository;
             return this;
         }
 
-        public BlockTracker.Builder startCommitId(String startCommitId) {
+        public BlockTrackerGumTree.Builder startCommitId(String startCommitId) {
             this.startCommitId = startCommitId;
             return this;
         }
 
-        public BlockTracker.Builder filePath(String filePath) {
+        public BlockTrackerGumTree.Builder filePath(String filePath) {
             this.filePath = filePath;
             return this;
         }
 
-        public BlockTracker.Builder methodName(String methodName) {
+        public BlockTrackerGumTree.Builder methodName(String methodName) {
             this.methodName = methodName;
             return this;
         }
 
-        public BlockTracker.Builder methodDeclarationLineNumber(int methodDeclarationLineNumber) {
+        public BlockTrackerGumTree.Builder methodDeclarationLineNumber(int methodDeclarationLineNumber) {
             this.methodDeclarationLineNumber = methodDeclarationLineNumber;
             return this;
         }
@@ -49,12 +49,12 @@ public interface BlockTracker extends CodeTracker {
             return this;
         }
 
-        public BlockTracker.Builder blockStartLineNumber(int blockStartLineNumber) {
+        public BlockTrackerGumTree.Builder blockStartLineNumber(int blockStartLineNumber) {
             this.blockStartLineNumber = blockStartLineNumber;
             return this;
         }
 
-        public BlockTracker.Builder blockEndLineNumber(int blockEndLineNumber) {
+        public BlockTrackerGumTree.Builder blockEndLineNumber(int blockEndLineNumber) {
             this.blockEndLineNumber = blockEndLineNumber;
             return this;
         }
@@ -63,9 +63,9 @@ public interface BlockTracker extends CodeTracker {
 
         }
 
-        public BlockTracker build() {
+        public BlockTrackerGumTree build() {
             checkInput();
-            return new BlockTrackerImpl(repository, startCommitId, filePath, methodName, methodDeclarationLineNumber,
+            return new BlockTrackerGumTreeImpl(repository, startCommitId, filePath, methodName, methodDeclarationLineNumber,
                     codeElementType, blockStartLineNumber, blockEndLineNumber);
         }
     }

@@ -25,7 +25,7 @@ public class Main {
         try (Repository repository = gitService.cloneIfNotExists(FOLDER_TO_CLONE + "checkstyle\\checkstyle",
                 "https://github.com/checkstyle/checkstyle.git")) {
 
-            BlockTracker blockTracker = CodeTracker.blockTracker()
+            BlockTrackerGumTree blockTracker = CodeTracker.blockTrackerGumTree()
                     .repository(repository)
                     .filePath("src/checkstyle/com/puppycrawl/tools/checkstyle/TreeWalker.java")
                     .startCommitId("abff1a2489ea8af10e1bc0a335551262d22f44e7")

@@ -12,10 +12,7 @@ import com.github.gumtreediff.matchers.Matchers;
 import com.github.gumtreediff.tree.Tree;
 import gr.uom.java.xmi.LocationInfo.CodeElementType;
 import gr.uom.java.xmi.UMLModel;
-import org.codetracker.api.BlockTracker;
-import org.codetracker.api.CodeElementNotFoundException;
-import org.codetracker.api.History;
-import org.codetracker.api.Version;
+import org.codetracker.api.*;
 import org.codetracker.change.AbstractChange;
 import org.codetracker.change.Change;
 import org.codetracker.change.ChangeFactory;
@@ -30,7 +27,7 @@ import java.util.*;
 import static java.util.Map.entry;
 import static org.codetracker.util.Util.*;
 
-public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker {
+public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTrackerGumTree {
     private final ChangeHistory<Block> blockChangeHistory = new ChangeHistory<>();
     private final String methodName;
     private final int methodDeclarationLineNumber;
