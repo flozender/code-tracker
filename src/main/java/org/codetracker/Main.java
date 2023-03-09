@@ -22,18 +22,18 @@ public class Main {
         GitService gitService = new GitServiceImpl();
         
         // BLOCK TRACKING EXAMPLE
-        try (Repository repository = gitService.cloneIfNotExists(FOLDER_TO_CLONE + "checkstyle\\checkstyle",
-                "https://github.com/checkstyle/checkstyle.git")) {
+        try (Repository repository = gitService.cloneIfNotExists(FOLDER_TO_CLONE + "apache\\commons-lang",
+                "https://github.com/apache/commons-lang.git")) {
 
             BlockTrackerGumTree blockTracker = CodeTracker.blockTrackerGumTree()
                     .repository(repository)
-                    .filePath("src/main/java/com/puppycrawl/tools/checkstyle/Checker.java")
-                    .startCommitId("119fd4fb33bef9f5c66fc950396669af842c21a3")
-                    .methodName("fireErrors")
-                    .methodDeclarationLineNumber(377)
-                    .codeElementType(LocationInfo.CodeElementType.ENHANCED_FOR_STATEMENT)
-                    .blockStartLineNumber(387)
-                    .blockEndLineNumber(395)
+                    .filePath("src/main/java/org/apache/commons/lang3/time/DateUtils.java")
+                    .startCommitId("a36c903d4f1065bc59f5e6d2bb0f9d92a5e71d83")
+                    .methodName("modify")
+                    .methodDeclarationLineNumber(950)
+                    .codeElementType(LocationInfo.CodeElementType.IF_STATEMENT)
+                    .blockStartLineNumber(1013)
+                    .blockEndLineNumber(1041)
                     .build();
 
             History<Block> blockHistory = blockTracker.track();

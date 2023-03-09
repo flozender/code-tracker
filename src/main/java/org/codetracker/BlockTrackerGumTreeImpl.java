@@ -265,6 +265,9 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                             for (DiffEntry file : changedFiles){
                                 String additionalFilePath = file.getOldPath();
                                 GumTreeSource additionalDestination = new GumTreeSource(repository, parentCommitId, additionalFilePath);
+                                if (additionalDestination == null || additionalDestination.tree == null){
+                                    continue;
+                                }
                                 MappingStore additionalMappings = defaultMatcher.match(source.tree, additionalDestination.tree);
                                 leftMethodGT = additionalMappings.getDstForSrc(rightMethodGT);
                                 if (leftMethodGT != null) {
