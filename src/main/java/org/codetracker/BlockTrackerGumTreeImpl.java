@@ -75,7 +75,7 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
     private Tree blockToGumTree(Block block, Tree sourceTree, LineReader lr) {
         Tree blockGT = null;
         for (Tree descendant : sourceTree.getDescendants()) {
-            if (descendant.getType().toString().contains("Statement")) {
+            if (descendant.getType().toString().contains("Statement") || descendant.getType().toString().equals("CatchClause")) {
                 int descendantStartLine = startLine(descendant, lr);
                 int descendantEndLine = endLine(descendant, lr);
                 if (descendantStartLine == block.getLocation().getStartLine()

@@ -27,13 +27,13 @@ public class Main {
 
             BlockTrackerGumTree blockTracker = CodeTracker.blockTrackerGumTree()
                     .repository(repository)
-                    .filePath("src/main/java/org/apache/commons/lang3/time/FastDatePrinter.java")
+                    .filePath("src/main/java/org/apache/commons/lang3/math/NumberUtils.java")
                     .startCommitId("a36c903d4f1065bc59f5e6d2bb0f9d92a5e71d83")
-                    .methodName("parsePattern")
-                    .methodDeclarationLineNumber(175)
-                    .codeElementType(LocationInfo.CodeElementType.FOR_STATEMENT)
-                    .blockStartLineNumber(195)
-                    .blockEndLineNumber(311)
+                    .methodName("createNumber")
+                    .methodDeclarationLineNumber(419)
+                    .codeElementType(LocationInfo.CodeElementType.CATCH_CLAUSE)
+                    .blockStartLineNumber(590)
+                    .blockEndLineNumber(592)
                     .build();
 
             History<Block> blockHistory = blockTracker.track();
