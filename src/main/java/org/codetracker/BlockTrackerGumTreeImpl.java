@@ -226,6 +226,30 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                         destination = new GumTreeSource(repository, parentCommitId, newLeftFilePath);
                     }
 
+                    // find all the files that were modified in this commit
+                    List<DiffEntry> changedFiles = listDiff(repository, git, commitId, parentCommitId);
+                    Matcher defaultMatcher = Matchers.getInstance().getMatcher();
+
+                    Tree leftMethodGT = null;
+                    // if no file was found by git (newLeftFilePath), 
+                    // we try all the other files in the commit
+                    if (destination == null || destination.tree == null) {
+                        for (DiffEntry file : changedFiles) {
+                            String additionalFilePath = file.getOldPath();
+                            GumTreeSource additionalDestination = new GumTreeSource(repository, parentCommitId, additionalFilePath);
+
+                            if (additionalDestination == null || additionalDestination.tree == null) {
+                                continue;
+                            }
+                            MappingStore additionalMappings = defaultMatcher.match(source.tree, additionalDestination.tree);
+                            leftMethodGT = additionalMappings.getDstForSrc(rightMethodGT);
+                            if (leftMethodGT != null) {
+                                destination = additionalDestination;
+                                break;
+                            }
+                        }
+                    }
+
                     // If the file is still not found, it can't be found by GumTree anymore
                     if (destination.tree == null) {
                         Block blockBefore = Block.of(rightBlock.getComposite(), rightBlock.getOperation(), parentVersion);
@@ -235,7 +259,6 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                         break;
                     }
 
-                    Matcher defaultMatcher = Matchers.getInstance().getMatcher();
                     MappingStore mappings = defaultMatcher.match(source.tree, destination.tree);
 
                     EditScriptGenerator editScriptGenerator = new SimplifiedChawatheScriptGenerator();
@@ -245,7 +268,7 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                     Tree leftBlockGT = mappings.getDstForSrc(rightBlockGT);
 
                     if (leftMethod == null && rightMethodGT != null) {
-                        Tree leftMethodGT = mappings.getDstForSrc(rightMethodGT);
+                        leftMethodGT = mappings.getDstForSrc(rightMethodGT);
 
                         // if a block was mapped but the parent method was unmapped
                         // (the block moved another method wasn't mapped to the original method)
@@ -261,7 +284,6 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                         // if method was not found and the block was not mapped
                         // try to see if the method moved to another file
                         if (leftMethodGT == null){
-                            List<DiffEntry> changedFiles = listDiff(repository, git, commitId, parentCommitId);
                             for (DiffEntry file : changedFiles){
                                 String additionalFilePath = file.getOldPath();
                                 GumTreeSource additionalDestination = new GumTreeSource(repository, parentCommitId, additionalFilePath);
