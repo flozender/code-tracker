@@ -22,18 +22,18 @@ public class Main {
         GitService gitService = new GitServiceImpl();
         
         // BLOCK TRACKING EXAMPLE
-        try (Repository repository = gitService.cloneIfNotExists(FOLDER_TO_CLONE + "apache\\commons-lang",
-                "https://github.com/apache/commons-lang.git")) {
+        try (Repository repository = gitService.cloneIfNotExists(FOLDER_TO_CLONE + "apache\\flink",
+                "https://github.com/apache/flink.git")) {
 
             BlockTrackerGumTree blockTracker = CodeTracker.blockTrackerGumTree()
                     .repository(repository)
-                    .filePath("src/main/java/org/apache/commons/lang3/math/NumberUtils.java")
-                    .startCommitId("a36c903d4f1065bc59f5e6d2bb0f9d92a5e71d83")
-                    .methodName("createNumber")
-                    .methodDeclarationLineNumber(419)
-                    .codeElementType(LocationInfo.CodeElementType.CATCH_CLAUSE)
-                    .blockStartLineNumber(590)
-                    .blockEndLineNumber(592)
+                    .filePath("flink-streaming-java/src/main/java/org/apache/flink/streaming/api/environment/RemoteStreamEnvironment.java")
+                    .startCommitId("9e936a5f8198b0059e9b5fba33163c2bbe3efbdd")
+                    .methodName("executeRemotely")
+                    .methodDeclarationLineNumber(181)
+                    .codeElementType(LocationInfo.CodeElementType.FINALLY_BLOCK)
+                    .blockStartLineNumber(230)
+                    .blockEndLineNumber(236)
                     .build();
 
             History<Block> blockHistory = blockTracker.track();
