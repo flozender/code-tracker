@@ -397,7 +397,7 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                                             case "Block":
                                                 if (body == null) {
                                                     body = child;
-                                                } else {
+                                                } else if (this.treeType == CodeElementType.TRY_STATEMENT) {
                                                     finallyBlock = child;
                                                 }
                                                 break;
