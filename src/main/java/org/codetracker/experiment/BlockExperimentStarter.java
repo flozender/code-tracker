@@ -6,6 +6,7 @@ import gr.uom.java.xmi.LocationInfo;
 import java.io.IOException;
 import java.util.List;
 import org.codetracker.api.BlockTracker;
+import org.codetracker.api.BlockTrackerGumTree;
 import org.codetracker.api.CodeTracker;
 import org.codetracker.api.History;
 import org.codetracker.element.Block;
@@ -51,8 +52,8 @@ public class BlockExperimentStarter extends AbstractExperimentStarter {
     BlockHistoryInfo blockHistoryInfo,
     Repository repository
   ) throws Exception {
-    BlockTracker blockTracker = CodeTracker
-      .blockTracker()
+    BlockTrackerGumTree blockTracker = CodeTracker
+      .blockTrackerGumTree()
       .repository(repository)
       .filePath(blockHistoryInfo.getFilePath())
       .startCommitId(blockHistoryInfo.getStartCommitId())
