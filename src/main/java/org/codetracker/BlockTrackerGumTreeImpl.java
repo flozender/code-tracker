@@ -355,6 +355,8 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                     this.blockEndLineNumberTree = endLine(leftBlockGT, lrDestination);
 
                     Block leftBlock = leftMethod.findBlock(this::isEqualToBlockTree);
+                    CodeElementRange leftBlockRange = new CodeElementRange(leftBlockGT, lrDestination);
+                    CodeElementRange rightBlockRange = new CodeElementRange(rightBlockGT, lrSource);
 
                     boolean bodyChange = false;
                     boolean expressionChange = false;
@@ -362,29 +364,37 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                     boolean finallyBlockChange = false;
 
                     for (Action action : actions.asList()) {
-                        // Here check each action and derive the change made
-                        CodeElementRange actionRange = new CodeElementRange(action.getNode(), lrSource);
-                        CodeElementRange blockRange = new CodeElementRange(rightBlockGT, lrSource);
-                        if (actionOverlapsElement(actionRange, blockRange, true)) {
+                        CodeElementRange blockRange;
+                        LineReader lrFile;
+                        if (action.getName().contains("insert")) {
+                            blockRange = leftBlockRange;
+                            lrFile = lrDestination;
+                        } else {
+                            blockRange = rightBlockRange;
+                            lrFile = lrSource;
+                        }
 
+                        // Here check each action and derive the change made
+                        CodeElementRange actionRange = new CodeElementRange(action.getNode(), lrFile);
+                        if (actionOverlapsElement(actionRange, blockRange)) {
                             Tree expression = null;
                             Tree body = null;
                             ArrayList<Tree> catchClauses = new ArrayList<>();
                             Tree finallyBlock = null;
                             for (Tree parent : action.getNode().getParents()) {
-                                CodeElementRange parentRange = new CodeElementRange(parent, lrSource);
+                                CodeElementRange parentRange = new CodeElementRange(parent, lrFile);
                                 // if the action parent start line matches our block's start line
                                 // we have our element
                                 // the last condition handles cases of multiple if/else blocks
                                 // where the start line doesn't match block start line
                                 if (
-                                        (parentRange.startLine == blockRange.startLine &&
+                                        (parentRange.startPosition == blockRange.startPosition &&
                                                 (parent.getType().toString().contains("Statement") ||
                                                         parent.getType().toString().equals("CatchClause") ||
                                                         (parent.getType().toString().equals("Block") &&
                                                                 this.treeType == CodeElementType.FINALLY_BLOCK))
                                         ) ||
-                                                (parentRange.endLine == blockRange.endLine &&
+                                                (parentRange.endPosition == blockRange.endPosition &&
                                                         parent.getType().toString().equals("IfStatement"))
                                 ) {
                                     // obtain statement body, expression, and catch/finally positions (if any)
@@ -409,10 +419,10 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                                 }
                             }
 
-                            CodeElementRange bodyRange = new CodeElementRange(body, lrSource);
-                            CodeElementRange expressionRange = new CodeElementRange(expression, lrSource);
-                            CodeElementRange catchClauseRange = new CodeElementRange(catchClauses, lrSource);
-                            CodeElementRange finallyBlockRange = new CodeElementRange(finallyBlock, lrSource);
+                            CodeElementRange bodyRange = new CodeElementRange(body, lrFile);
+                            CodeElementRange expressionRange = new CodeElementRange(expression, lrFile);
+                            CodeElementRange catchClauseRange = new CodeElementRange(catchClauses, lrFile);
+                            CodeElementRange finallyBlockRange = new CodeElementRange(finallyBlock, lrFile);
 
                             // check if a change was made within an expression
                             if (actionOverlapsElement(actionRange, expressionRange)) {
