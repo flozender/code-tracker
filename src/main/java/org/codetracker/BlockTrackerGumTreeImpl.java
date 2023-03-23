@@ -400,20 +400,16 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                                     // obtain statement body, expression, and catch/finally positions (if any)
                                     for (Tree child : parent.getChildren()) {
                                         String childType = child.getType().toString();
-                                        switch (childType) {
-                                            case "InstanceofExpression":
-                                                expression = child;
-                                                break;
-                                            case "Block":
-                                                if (body == null) {
-                                                    body = child;
-                                                } else if (this.treeType == CodeElementType.TRY_STATEMENT) {
-                                                    finallyBlock = child;
-                                                }
-                                                break;
-                                            case "CatchClause":
-                                                catchClauses.add(child);
-                                                break;
+                                        if (childType.toLowerCase().contains("expression")) {
+                                            expression = child;
+                                        } else if (childType.equals("Block")) {
+                                            if (body == null) {
+                                                body = child;
+                                            } else if (this.treeType == CodeElementType.TRY_STATEMENT) {
+                                                finallyBlock = child;
+                                            }
+                                        } else if (childType.equals("CatchClause")) {
+                                            catchClauses.add(child);
                                         }
                                     }
                                 }

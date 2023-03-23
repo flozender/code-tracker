@@ -22,18 +22,18 @@ public class Main {
         GitService gitService = new GitServiceImpl();
         
         // BLOCK TRACKING EXAMPLE
-        try (Repository repository = gitService.cloneIfNotExists(FOLDER_TO_CLONE + "apache\\commons-lang",
-                "https://github.com/apache/commons-lang.git")) {
+        try (Repository repository = gitService.cloneIfNotExists(FOLDER_TO_CLONE + "spring-projects\\spring-framework",
+                "https://github.com/spring-projects/spring-framework.git")) {
 
             BlockTrackerGumTree blockTracker = CodeTracker.blockTrackerGumTree()
                     .repository(repository)
-                    .filePath("src/main/java/org/apache/commons/lang3/time/FastDatePrinter.java")
-                    .startCommitId("1002c9e243883654f9c1e6beae643fb4e72fc172")
-                    .methodName("parsePattern")
-                    .methodDeclarationLineNumber(182)
-                    .codeElementType(LocationInfo.CodeElementType.FOR_STATEMENT)
-                    .blockStartLineNumber(196)
-                    .blockEndLineNumber(308)
+                    .filePath("spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/method/annotation/AbstractMessageConverterMethodProcessor.java")
+                    .startCommitId("b325c74216fd9564a36602158fa1269e2e832874")
+                    .methodName("writeWithMessageConverters")
+                    .methodDeclarationLineNumber(168)
+                    .codeElementType(LocationInfo.CodeElementType.IF_STATEMENT)
+                    .blockStartLineNumber(276)
+                    .blockEndLineNumber(300)
                     .build();
 
             History<Block> blockHistory = blockTracker.track();
