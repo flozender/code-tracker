@@ -12,9 +12,11 @@ import com.github.gumtreediff.matchers.Matchers;
 import com.github.gumtreediff.matchers.MultiMappingStore;
 import com.github.gumtreediff.tree.Tree;
 import gr.uom.java.xmi.LocationInfo.CodeElementType;
+import gr.uom.java.xmi.UMLClass;
 import gr.uom.java.xmi.UMLModel;
 import gr.uom.java.xmi.UMLOperation;
 import gr.uom.java.xmi.diff.MoveOperationRefactoring;
+import gr.uom.java.xmi.diff.SplitClassRefactoring;
 import org.codetracker.api.BlockTrackerGumTree;
 import org.codetracker.api.CodeElementNotFoundException;
 import org.codetracker.api.History;
@@ -350,7 +352,13 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                             Tree body = null;
                             ArrayList<Tree> catchClauses = new ArrayList<>();
                             Tree finallyBlock = null;
-                            for (Tree parent : action.getNode().getParents()) {
+                            List<Tree> processNodes;
+                            if (action.getName().equals("move-tree")){
+                                processNodes = action.getNode().getDescendants();
+                            } else {
+                                processNodes = action.getNode().getParents();
+                            }
+                            for (Tree parent : processNodes) {
                                 CodeElementRange parentRange = new CodeElementRange(parent, lrFile);
                                 // if the action parent start line matches our block's start line
                                 // we have our element
@@ -369,7 +377,11 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                                     // obtain statement body, expression, and catch/finally positions (if any)
                                     for (Tree child : parent.getChildren()) {
                                         String childType = child.getType().toString();
-                                        if (childType.toLowerCase().contains("expression")) {
+                                        if (childType.toLowerCase().contains("expression") ||
+                                                // handle case for enhanced-for-loop & catch expressions
+                                                childType.equals("SingleVariableDeclaration") ||
+                                                childType.equals("SimpleName")
+                                        ) {
                                             expression.add(child);
                                         } else if (childType.equals("Block")) {
                                             if (body == null) {
@@ -381,12 +393,6 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                                             }
                                         } else if (childType.equals("CatchClause")) {
                                             catchClauses.add(child);
-                                        }
-                                        // handle case for enhanced-for-loop
-                                        else if (this.treeType == CodeElementType.ENHANCED_FOR_STATEMENT){
-                                            if (childType.equals("SingleVariableDeclaration") || childType.equals("SimpleName")){
-                                                expression.add(child);
-                                            }
                                         }
                                         // handle case for method invocation in if statement
                                         else if (this.treeType == CodeElementType.IF_STATEMENT){
@@ -474,7 +480,17 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                         if (ref1.getOriginalOperation().equalSignature((UMLOperation) rightMethod.getUmlOperation())) {
                             movedFilePath[0] = ref1.getOriginalOperation().getLocationInfo().getFilePath();
                         }
-                    }
+                    } else if (ref instanceof SplitClassRefactoring){
+                        SplitClassRefactoring ref1 = (SplitClassRefactoring) ref;
+                        for (Object clazz : ref1.getSplitClasses().toArray()){
+                            UMLClass umlClass = (UMLClass) clazz;
+                            if (umlClass.getSourceFile().equals(rightMethod.getFilePath())){
+                                movedFilePath[0] = ref1.getOriginalClass().getSourceFile();
+                                break;
+                            }
+                        }
+
+                     }
                 }
             }
         });
