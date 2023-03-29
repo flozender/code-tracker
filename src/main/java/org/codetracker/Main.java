@@ -22,18 +22,18 @@ public class Main {
         GitService gitService = new GitServiceImpl();
         
         // BLOCK TRACKING EXAMPLE
-        try (Repository repository = gitService.cloneIfNotExists(FOLDER_TO_CLONE + "spring-projects\\spring-framework",
+        try (Repository repository = gitService.cloneIfNotExists(FOLDER_TO_CLONE + "checkstyle\\checkstyle",
                 "https://github.com/spring-projects/spring-framework.git")) {
 
             BlockTrackerGumTree blockTracker = CodeTracker.blockTrackerGumTree()
                     .repository(repository)
-                    .filePath("spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/method/annotation/AbstractMessageConverterMethodProcessor.java")
-                    .startCommitId("b325c74216fd9564a36602158fa1269e2e832874")
-                    .methodName("writeWithMessageConverters")
-                    .methodDeclarationLineNumber(168)
+                    .filePath("src/checkstyle/com/puppycrawl/tools/checkstyle/TreeWalker.java")
+                    .startCommitId("784b3270054dd61d8c6dbe413bcedfc628063171")
+                    .methodName("process")
+                    .methodDeclarationLineNumber(223)
                     .codeElementType(LocationInfo.CodeElementType.IF_STATEMENT)
-                    .blockStartLineNumber(276)
-                    .blockEndLineNumber(300)
+                    .blockStartLineNumber(228)
+                    .blockEndLineNumber(230)
                     .build();
 
             History<Block> blockHistory = blockTracker.track();

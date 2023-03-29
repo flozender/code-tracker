@@ -9,9 +9,12 @@ import com.github.gumtreediff.io.LineReader;
 import com.github.gumtreediff.matchers.MappingStore;
 import com.github.gumtreediff.matchers.Matcher;
 import com.github.gumtreediff.matchers.Matchers;
+import com.github.gumtreediff.matchers.MultiMappingStore;
 import com.github.gumtreediff.tree.Tree;
 import gr.uom.java.xmi.LocationInfo.CodeElementType;
 import gr.uom.java.xmi.UMLModel;
+import gr.uom.java.xmi.UMLOperation;
+import gr.uom.java.xmi.diff.MoveOperationRefactoring;
 import org.codetracker.api.BlockTrackerGumTree;
 import org.codetracker.api.CodeElementNotFoundException;
 import org.codetracker.api.History;
@@ -24,6 +27,9 @@ import org.codetracker.element.Method;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.lib.Repository;
+import org.refactoringminer.api.Refactoring;
+import org.refactoringminer.api.RefactoringHandler;
+import org.refactoringminer.rm1.GitHistoryRefactoringMinerImpl;
 
 import java.util.*;
 
@@ -193,73 +199,39 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                     }
 
                     // CHANGE BODY OR DOCUMENT
-                    // If the method body has changed between commits but signature remains the same
-                    leftMethod = getMethod(leftModel, parentVersion, rightMethod::equalIdentifierIgnoringVersionAndDocumentAndBody);
 
+                    // If the method body has changed between commits but signature remains the same
+                    // leftMethod = getMethod(leftModel, parentVersion, rightMethod::equalIdentifierIgnoringVersionAndDocumentAndBody);
+                    Matcher defaultMatcher = Matchers.getInstance().getMatcher();
+
+                    // in the perspective of drilling down from the newest to the oldest commit,
+                    // source is the current commit, destination is the parent commit
                     GumTreeSource source = new GumTreeSource(repository, commitId, rightBlock.getFilePath());
+                    GumTreeSource destination = new GumTreeSource(repository, parentCommitId, rightMethod.getFilePath());
 
                     LineReader lrSource = getLineReader(source.fileContent);
 
-                    Tree rightMethodGT = null;
-                    String newLeftFilePath = null;
-                    // check if file name has changed
-                    if (leftMethod == null) {
-                        //  Here handle cases where method signature has changed, get new method mapping from gumtree
-                        DiffEntry diff = diffFile(repository,
-                                parentCommitId,
-                                commitId,
-                                rightMethod.getFilePath());
-                        if (diff != null
-                                && !diff.getOldPath().equals(diff.getNewPath())
-                                && !diff.getOldPath().equals("/dev/null")
-                        ) {
-                            // Obtain the new file name from git in case of rename
-                            newLeftFilePath = diff.getOldPath();
-                        }
-                        rightMethodGT = methodToGumTree(rightMethod, source.tree, lrSource);
-                    }
-
+                    // GT suffix to variables indicates that it is a GumTree Tree
+                    Tree rightMethodGT = methodToGumTree(rightMethod, source.tree, lrSource);
                     Tree rightBlockGT = blockToGumTree(rightBlock, source.tree, lrSource);
 
-                    GumTreeSource destination = null;
-
-                    if (leftMethod != null) {
-                        destination = new GumTreeSource(repository, parentCommitId, leftMethod.getFilePath());
-                    }
-
+                    // if destination is null, then the file doesn't exist anymore
                     if (destination == null || destination.tree == null) {
-                        destination = new GumTreeSource(repository, parentCommitId, rightMethod.getFilePath());
-                    }
-
-                    if (destination == null || destination.tree == null) {
-                        destination = new GumTreeSource(repository, parentCommitId, newLeftFilePath);
-                    }
-
-                    // find all the files that were modified in this commit
-                    List<DiffEntry> changedFiles = listDiff(repository, git, commitId, parentCommitId);
-                    Matcher defaultMatcher = Matchers.getInstance().getMatcher();
-
-                    Tree leftMethodGT = null;
-                    // if no file was found by git (newLeftFilePath), 
-                    // we try all the other files in the commit
-                    if (destination == null || destination.tree == null) {
-                        for (DiffEntry file : changedFiles) {
-                            String additionalFilePath = file.getOldPath();
-                            GumTreeSource additionalDestination = new GumTreeSource(repository, parentCommitId, additionalFilePath);
-
-                            if (additionalDestination == null || additionalDestination.tree == null) {
-                                continue;
-                            }
-                            MappingStore additionalMappings = defaultMatcher.match(source.tree, additionalDestination.tree);
-                            leftMethodGT = additionalMappings.getDstForSrc(rightMethodGT);
-                            if (leftMethodGT != null) {
-                                destination = additionalDestination;
-                                break;
-                            }
+                        // check if file name has changed (via git)
+                        DiffEntry diff = diffFile(repository, parentCommitId, commitId, rightMethod.getFilePath());
+                        if (diff != null && !diff.getOldPath().equals(diff.getNewPath()) && !diff.getOldPath().equals("/dev/null")) {
+                            // Obtain the new file name from git in case of rename
+                            destination = new GumTreeSource(repository, parentCommitId, diff.getOldPath());
                         }
                     }
 
-                    // If the file is still not found, it can't be found by GumTree anymore
+                    // check if the method was moved using RMiner and set the new destination
+                    String movedFilePath = getMovedFilePathFromRMiner(currentVersion.getId(), rightMethod);
+                    if (movedFilePath != null) {
+                        destination = new GumTreeSource(repository, parentCommitId, movedFilePath);
+                    }
+
+                    // If the file is still not found, it can't be found by GumTree or RMiner anymore
                     if (destination.tree == null) {
                         Block blockBefore = Block.of(rightBlock.getComposite(), rightBlock.getOperation(), parentVersion);
                         blockChangeHistory.handleAdd(blockBefore, rightBlock, "added with method");
@@ -268,64 +240,68 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                         break;
                     }
 
-                    MappingStore mappings = defaultMatcher.match(source.tree, destination.tree);
-
+                    MappingStore mappings;
+                    // preSource is the file the method may have been moved to,
+                    // but in the original commit
+                    GumTreeSource preSource = new GumTreeSource(repository, commitId, movedFilePath);
+                    // check if the preSource file was deleted in the current commit
+                    if (preSource == null || preSource.tree == null) {
+                        mappings = defaultMatcher.match(source.tree, destination.tree);
+                    } else {
+                        // preSource does exist, so first create mappings for preSource
+                        MappingStore preMappings = defaultMatcher.match(preSource.tree, destination.tree);
+                        // and find mappings with the original source among unmapped nodes
+                        mappings = defaultMatcher.match(source.tree, destination.tree, preMappings);
+                    }
+                    // get the edit script and actions performed
                     EditScriptGenerator editScriptGenerator = new SimplifiedChawatheScriptGenerator();
                     EditScript actions = editScriptGenerator.computeActions(mappings);
+
                     LineReader lrDestination = getLineReader(destination.fileContent);
 
+                    Tree leftMethodGT = null;
                     Tree leftBlockGT = mappings.getDstForSrc(rightBlockGT);
 
-                    if (leftMethod == null && rightMethodGT != null) {
+                    if (leftBlockGT != null) {
+                        // find and map the parent method of the block that matched
+                        for (Tree blockParent : leftBlockGT.getParents()) {
+                            if (blockParent.getType().toString().equals("MethodDeclaration")) {
+                                leftMethodGT = blockParent;
+                                break;
+                            }
+                        }
+                    } else if (rightMethodGT != null) {
+                        // we reach here if left block was unmapped by gumtree
+                        // now, check if the method can be mapped
+                        // (cases where block was added to an existing method)
                         leftMethodGT = mappings.getDstForSrc(rightMethodGT);
-
-                        // if a block was mapped but the parent method was unmapped
-                        // (the block moved another method wasn't mapped to the original method)
-                        if (leftMethodGT == null && leftBlockGT != null) {
-                            // find and map the parent method of the block that did match
-                            for (Tree blockParent : leftBlockGT.getParents()) {
-                                if (blockParent.getType().toString().equals("MethodDeclaration")) {
-                                    leftMethodGT = blockParent;
-                                    break;
-                                }
-                            }
-                        }
-                        // if method was not found and the block was not mapped
-                        // try to see if the method moved to another file
-                        if (leftMethodGT == null) {
-                            for (DiffEntry file : changedFiles) {
-                                String additionalFilePath = file.getOldPath();
-                                GumTreeSource additionalDestination = new GumTreeSource(repository, parentCommitId, additionalFilePath);
-                                if (additionalDestination == null || additionalDestination.tree == null) {
-                                    continue;
-                                }
-                                MappingStore additionalMappings = defaultMatcher.match(source.tree, additionalDestination.tree);
-                                leftMethodGT = additionalMappings.getDstForSrc(rightMethodGT);
-                                if (leftMethodGT != null) {
-                                    destination = additionalDestination;
-                                    lrDestination = getLineReader(destination.fileContent);
-                                    leftBlockGT = additionalMappings.getDstForSrc(rightBlockGT);
-                                    break;
-                                }
-                            }
-                        }
-
-                        // if both left method and block are unmapped
-                        if (leftMethodGT == null) {
-                            Block blockBefore = Block.of(rightBlock.getComposite(), rightBlock.getOperation(), parentVersion);
-                            blockChangeHistory.handleAdd(blockBefore, rightBlock, "added with method");
-                            blocks.add(blockBefore);
-                            blockChangeHistory.connectRelatedNodes();
-                            break;
-                        }
-
-                        // Set attributes for matching method predicate
-                        this.methodStartLineNumberTree = startLine(leftMethodGT, lrDestination);
-                        this.methodEndLineNumberTree = endLine(leftMethodGT, lrDestination);
-
-                        leftModel = getUMLModel(parentCommitId, Collections.singleton(destination.filePath));
-                        leftMethod = getMethod(leftModel, parentVersion, this::isEqualToMethodTree);
                     }
+
+                    // report cases where method was added with the block
+                    // since here, the method and block are both unmapped
+                    if (leftMethodGT == null) {
+                        Block blockBefore = Block.of(rightBlock.getComposite(), rightBlock.getOperation(), parentVersion);
+                        blockChangeHistory.handleAdd(blockBefore, rightBlock, "added with method");
+                        blocks.add(blockBefore);
+                        blockChangeHistory.connectRelatedNodes();
+                        break;
+                    }
+
+                    // The method exists but the block doesn't, so it's newly introduced
+                    if (leftBlockGT == null) {
+                        Block blockBefore = Block.of(rightBlock.getComposite(), rightBlock.getOperation(), parentVersion);
+                        blockChangeHistory.handleAdd(blockBefore, rightBlock, "new block");
+                        blocks.add(blockBefore);
+                        blockChangeHistory.connectRelatedNodes();
+                        break;
+                    }
+
+                    // Set attributes for matching method predicate
+                    this.methodStartLineNumberTree = startLine(leftMethodGT, lrDestination);
+                    this.methodEndLineNumberTree = endLine(leftMethodGT, lrDestination);
+
+                    leftModel = getUMLModel(parentCommitId, Collections.singleton(destination.filePath));
+                    leftMethod = getMethod(leftModel, parentVersion, this::isEqualToMethodTree);
 
                     Map<String, CodeElementType> treeToBlockType = Map.ofEntries(
                             entry("ForStatement", CodeElementType.FOR_STATEMENT),
@@ -339,14 +315,6 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                             entry("SynchronizedStatement", CodeElementType.SYNCHRONIZED_STATEMENT),
                             entry("Block", CodeElementType.FINALLY_BLOCK)
                     );
-                    // The method exists but the block doesn't, so it's newly introduced
-                    if (leftBlockGT == null) {
-                        Block blockBefore = Block.of(rightBlock.getComposite(), rightBlock.getOperation(), parentVersion);
-                        blockChangeHistory.handleAdd(blockBefore, rightBlock, "new block");
-                        blocks.add(blockBefore);
-                        blockChangeHistory.connectRelatedNodes();
-                        break;
-                    }
 
                     // Set attributes for matching block predicate
                     this.treeType = treeToBlockType.get(leftBlockGT.getType().name);
@@ -374,7 +342,7 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                             lrFile = lrSource;
                         }
 
-                        // Here check each action and derive the change made
+                        // check each action and derive the change made
                         CodeElementRange actionRange = new CodeElementRange(action.getNode(), lrFile);
                         if (actionOverlapsElement(actionRange, blockRange)) {
                             Tree expression = null;
@@ -439,7 +407,6 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                             }
 
                             // if all types of changes are found, break loop
-                            // && catchClauseChange
                             if (bodyChange && expressionChange && catchClauseChange && finallyBlockChange) {
                                 break;
                             }
@@ -480,7 +447,26 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
         }
     }
 
-    public class GumTreeSource {
+    public String getMovedFilePathFromRMiner(String commitId, Method rightMethod) {
+        final String[] movedFilePath = {null};
+        GitHistoryRefactoringMinerImpl miner = new GitHistoryRefactoringMinerImpl();
+        miner.detectAtCommit(repository, commitId, new RefactoringHandler() {
+            @Override
+            public void handle(String commitId, List<Refactoring> refactorings) {
+                for (Refactoring ref : refactorings) {
+                    if (ref instanceof MoveOperationRefactoring) {
+                        MoveOperationRefactoring ref1 = (MoveOperationRefactoring) ref;
+                        if (ref1.getOriginalOperation().equalSignature((UMLOperation) rightMethod.getUmlOperation())) {
+                            movedFilePath[0] = ref1.getOriginalOperation().getLocationInfo().getFilePath();
+                        }
+                    }
+                }
+            }
+        });
+        return movedFilePath[0];
+    }
+
+    public static class GumTreeSource {
         // filePaths within the repo
         String filePath = null;
         // File content
@@ -498,7 +484,7 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
         }
     }
 
-    public class CodeElementRange {
+    public static class CodeElementRange {
         public int startLine = -1;
         public int endLine = -1;
         public int startPosition = -1;
