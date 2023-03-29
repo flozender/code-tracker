@@ -31,9 +31,9 @@ public class Main {
                     .startCommitId("119fd4fb33bef9f5c66fc950396669af842c21a3")
                     .methodName("fireErrors")
                     .methodDeclarationLineNumber(377)
-                    .codeElementType(LocationInfo.CodeElementType.ENHANCED_FOR_STATEMENT)
-                    .blockStartLineNumber(391)
-                    .blockEndLineNumber(393)
+                    .codeElementType(LocationInfo.CodeElementType.IF_STATEMENT)
+                    .blockStartLineNumber(389)
+                    .blockEndLineNumber(394)
                     .build();
 
             History<Block> blockHistory = blockTracker.track();

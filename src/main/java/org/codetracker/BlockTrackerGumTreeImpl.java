@@ -388,6 +388,12 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                                                 expression.add(child);
                                             }
                                         }
+                                        // handle case for method invocation in if statement
+                                        else if (this.treeType == CodeElementType.IF_STATEMENT){
+                                            if (expression.size() == 0 && childType.equals("MethodInvocation")){
+                                                expression.add(child);
+                                            }
+                                        }
                                     }
                                 }
                             }
