@@ -241,16 +241,17 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                     }
 
                     MappingStore mappings;
-                    // preSource is the file the method may have been moved to,
-                    // but in the original commit
-                    GumTreeSource preSource = new GumTreeSource(repository, commitId, movedFilePath);
-                    // check if the preSource file was deleted in the current commit
-                    if (preSource == null || preSource.tree == null) {
+                    // postSource is the file the method was moved from,
+                    // but in the parent commit
+                    GumTreeSource postSource = new GumTreeSource(repository, parentCommitId, source.filePath);
+                    // check if the postSource file exists in the parent commit
+                    // TODO: handle cases where postSource was renamed
+                    if (movedFilePath == null || (postSource == null || postSource.tree == null)) {
                         mappings = defaultMatcher.match(source.tree, destination.tree);
                     } else {
-                        // preSource does exist, so first create mappings for preSource
-                        MappingStore preMappings = defaultMatcher.match(preSource.tree, destination.tree);
-                        // and find mappings with the original source among unmapped nodes
+                        // postSource does exist, so first create mappings for postSource w/ source
+                        MappingStore preMappings = defaultMatcher.match(source.tree, postSource.tree);
+                        // and find mappings (for the method?) with the destination among unmapped nodes
                         mappings = defaultMatcher.match(source.tree, destination.tree, preMappings);
                     }
                     // get the edit script and actions performed
@@ -471,12 +472,15 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
         String filePath = null;
         // File content
         String fileContent = null;
+        // Commit ID
+        String commitId = null;
         // GumTree JDT Tree object
         Tree tree = null;
 
         public GumTreeSource(Repository repository, String commitId, String filePath) {
             try {
                 this.filePath = filePath;
+                this.commitId = commitId;
                 this.fileContent = getFileContent(repository, commitId, filePath);
                 this.tree = new JdtTreeGenerator().generateFrom().string(this.fileContent).getRoot();
             } catch (Exception e) {
