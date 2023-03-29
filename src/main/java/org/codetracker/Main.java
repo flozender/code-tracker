@@ -23,17 +23,17 @@ public class Main {
         
         // BLOCK TRACKING EXAMPLE
         try (Repository repository = gitService.cloneIfNotExists(FOLDER_TO_CLONE + "checkstyle\\checkstyle",
-                "https://github.com/spring-projects/spring-framework.git")) {
+                "https://github.com/checkstyle/checkstyle.git")) {
 
             BlockTrackerGumTree blockTracker = CodeTracker.blockTrackerGumTree()
                     .repository(repository)
-                    .filePath("src/checkstyle/com/puppycrawl/tools/checkstyle/TreeWalker.java")
-                    .startCommitId("784b3270054dd61d8c6dbe413bcedfc628063171")
-                    .methodName("process")
-                    .methodDeclarationLineNumber(223)
-                    .codeElementType(LocationInfo.CodeElementType.IF_STATEMENT)
-                    .blockStartLineNumber(228)
-                    .blockEndLineNumber(230)
+                    .filePath("src/main/java/com/puppycrawl/tools/checkstyle/Checker.java")
+                    .startCommitId("119fd4fb33bef9f5c66fc950396669af842c21a3")
+                    .methodName("fireErrors")
+                    .methodDeclarationLineNumber(377)
+                    .codeElementType(LocationInfo.CodeElementType.ENHANCED_FOR_STATEMENT)
+                    .blockStartLineNumber(391)
+                    .blockEndLineNumber(393)
                     .build();
 
             History<Block> blockHistory = blockTracker.track();

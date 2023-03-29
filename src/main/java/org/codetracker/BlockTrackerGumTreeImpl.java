@@ -346,7 +346,7 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                         // check each action and derive the change made
                         CodeElementRange actionRange = new CodeElementRange(action.getNode(), lrFile);
                         if (actionOverlapsElement(actionRange, blockRange)) {
-                            Tree expression = null;
+                            ArrayList<Tree> expression = new ArrayList<>();
                             Tree body = null;
                             ArrayList<Tree> catchClauses = new ArrayList<>();
                             Tree finallyBlock = null;
@@ -370,15 +370,23 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                                     for (Tree child : parent.getChildren()) {
                                         String childType = child.getType().toString();
                                         if (childType.toLowerCase().contains("expression")) {
-                                            expression = child;
+                                            expression.add(child);
                                         } else if (childType.equals("Block")) {
                                             if (body == null) {
                                                 body = child;
-                                            } else if (this.treeType == CodeElementType.TRY_STATEMENT) {
+                                            }
+                                            // finally blocks are just "blocks"
+                                            else if (this.treeType == CodeElementType.TRY_STATEMENT) {
                                                 finallyBlock = child;
                                             }
                                         } else if (childType.equals("CatchClause")) {
                                             catchClauses.add(child);
+                                        }
+                                        // handle case for enhanced-for-loop
+                                        else if (this.treeType == CodeElementType.ENHANCED_FOR_STATEMENT){
+                                            if (childType.equals("SingleVariableDeclaration") || childType.equals("SimpleName")){
+                                                expression.add(child);
+                                            }
                                         }
                                     }
                                 }
