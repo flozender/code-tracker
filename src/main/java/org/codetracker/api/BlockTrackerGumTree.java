@@ -3,6 +3,7 @@ package org.codetracker.api;
 import gr.uom.java.xmi.LocationInfo.CodeElementType;
 import org.codetracker.element.Block;
 import org.codetracker.BlockTrackerGumTreeImpl;
+import org.codetracker.util.MethodCache;
 import org.eclipse.jgit.lib.Repository;
 
 public interface BlockTrackerGumTree extends CodeTracker {
@@ -18,6 +19,7 @@ public interface BlockTrackerGumTree extends CodeTracker {
         private CodeElementType codeElementType;
         private int blockStartLineNumber;
         private int blockEndLineNumber;
+        private MethodCache cache;
 
         public BlockTrackerGumTree.Builder repository(Repository repository) {
             this.repository = repository;
@@ -59,6 +61,11 @@ public interface BlockTrackerGumTree extends CodeTracker {
             return this;
         }
 
+        public BlockTrackerGumTree.Builder cache(MethodCache cache) {
+            this.cache = cache;
+            return this;
+        }
+
         private void checkInput() {
 
         }
@@ -66,7 +73,7 @@ public interface BlockTrackerGumTree extends CodeTracker {
         public BlockTrackerGumTree build() {
             checkInput();
             return new BlockTrackerGumTreeImpl(repository, startCommitId, filePath, methodName, methodDeclarationLineNumber,
-                    codeElementType, blockStartLineNumber, blockEndLineNumber);
+                    codeElementType, blockStartLineNumber, blockEndLineNumber, cache);
         }
     }
 }

@@ -26,6 +26,7 @@ import org.codetracker.change.Change;
 import org.codetracker.change.ChangeFactory;
 import org.codetracker.element.Block;
 import org.codetracker.element.Method;
+import org.codetracker.util.MethodCache;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.lib.Repository;
@@ -33,6 +34,7 @@ import org.refactoringminer.api.Refactoring;
 import org.refactoringminer.api.RefactoringHandler;
 import org.refactoringminer.rm1.GitHistoryRefactoringMinerImpl;
 
+import java.io.IOException;
 import java.util.*;
 
 import static java.util.Map.entry;
@@ -52,16 +54,21 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
     // attributes for method predicate
     private int methodStartLineNumberTree;
     private int methodEndLineNumberTree;
+    private MethodCache cache;
 
     public BlockTrackerGumTreeImpl(Repository repository, String startCommitId, String filePath,
                                    String methodName, int methodDeclarationLineNumber,
-                                   CodeElementType blockType, int blockStartLineNumber, int blockEndLineNumber) {
+                                   CodeElementType blockType, int blockStartLineNumber, int blockEndLineNumber,
+                                   MethodCache cache) {
         super(repository, startCommitId, filePath);
         this.methodName = methodName;
         this.methodDeclarationLineNumber = methodDeclarationLineNumber;
         this.blockType = blockType;
         this.blockStartLineNumber = blockStartLineNumber;
         this.blockEndLineNumber = blockEndLineNumber;
+        try {
+            this.cache = cache;
+        } catch (Exception ignored){}
     }
 
     // Convert CodeTracker Method to GumTree Tree
@@ -256,9 +263,6 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                         // and find mappings (for the method?) with the destination among unmapped nodes
                         mappings = defaultMatcher.match(source.tree, destination.tree, preMappings);
                     }
-                    // get the edit script and actions performed
-                    EditScriptGenerator editScriptGenerator = new SimplifiedChawatheScriptGenerator();
-                    EditScript actions = editScriptGenerator.computeActions(mappings);
 
                     LineReader lrDestination = getLineReader(destination.fileContent);
 
@@ -333,6 +337,10 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                     boolean expressionChange = false;
                     boolean catchClauseChange = false;
                     boolean finallyBlockChange = false;
+
+                    // get the edit script and actions performed
+                    EditScriptGenerator editScriptGenerator = new SimplifiedChawatheScriptGenerator();
+                    EditScript actions = editScriptGenerator.computeActions(mappings);
 
                     for (Action action : actions.asList()) {
                         CodeElementRange blockRange;
@@ -468,7 +476,18 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
         }
     }
 
-    public String getMovedFilePathFromRMiner(String commitId, Method rightMethod) {
+    public String getMovedFilePathFromRMiner(String commitId, Method rightMethod) throws IOException {
+        // Create a unique key for the cache entry based on the method signature and commit ID
+        String cacheKey = "getMovedFilePathFromRMiner:" + commitId + ":" + rightMethod.toString();
+
+        // Check if the cache contains the result for the given inputs
+        String cachedResult = cache.get(cacheKey);
+        if (cachedResult != null) {
+            // Return the cached result if available
+            return cachedResult;
+        }
+
+        // Compute the result if it's not in the cache
         final String[] movedFilePath = {null};
         GitHistoryRefactoringMinerImpl miner = new GitHistoryRefactoringMinerImpl();
         miner.detectAtCommit(repository, commitId, new RefactoringHandler() {
@@ -489,11 +508,15 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                                 break;
                             }
                         }
-
-                     }
+                    }
                 }
             }
         });
+
+        // Cache the result for future use
+        cache.put(cacheKey, movedFilePath[0]);
+
+        // Return the computed result
         return movedFilePath[0];
     }
 

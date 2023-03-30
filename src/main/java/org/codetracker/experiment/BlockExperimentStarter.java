@@ -12,15 +12,18 @@ import org.codetracker.api.History;
 import org.codetracker.element.Block;
 import org.codetracker.experiment.oracle.BlockOracle;
 import org.codetracker.experiment.oracle.history.BlockHistoryInfo;
+import org.codetracker.util.MethodCache;
 import org.eclipse.jgit.lib.Repository;
 
 public class BlockExperimentStarter extends AbstractExperimentStarter {
 
   private static final String TOOL_NAME = "gumtree";
   private static final String CODE_ELEMENT_NAME = "block";
+  private static final MethodCache cache = new MethodCache("src/main/resources/oracle/cache.json");;
 
   public static void main(String[] args) throws IOException {
     new BlockExperimentStarter().start();
+    cache.saveCacheToFile();
   }
 
   @Override
@@ -64,6 +67,7 @@ public class BlockExperimentStarter extends AbstractExperimentStarter {
       )
       .blockStartLineNumber(blockHistoryInfo.getBlockStartLine())
       .blockEndLineNumber(blockHistoryInfo.getBlockEndLine())
+      .cache(cache)
       .build();
     return blockTracker.track();
   }
