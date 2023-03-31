@@ -15,12 +15,11 @@ import gr.uom.java.xmi.LocationInfo.CodeElementType;
 import gr.uom.java.xmi.UMLClass;
 import gr.uom.java.xmi.UMLModel;
 import gr.uom.java.xmi.UMLOperation;
+import gr.uom.java.xmi.UMLType;
+import gr.uom.java.xmi.decomposition.*;
 import gr.uom.java.xmi.diff.MoveOperationRefactoring;
 import gr.uom.java.xmi.diff.SplitClassRefactoring;
-import org.codetracker.api.BlockTrackerGumTree;
-import org.codetracker.api.CodeElementNotFoundException;
-import org.codetracker.api.History;
-import org.codetracker.api.Version;
+import org.codetracker.api.*;
 import org.codetracker.change.AbstractChange;
 import org.codetracker.change.Change;
 import org.codetracker.change.ChangeFactory;
@@ -36,6 +35,7 @@ import org.refactoringminer.rm1.GitHistoryRefactoringMinerImpl;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static java.util.Map.entry;
 import static org.codetracker.util.Util.*;
@@ -72,14 +72,14 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
     }
 
     // Convert CodeTracker Method to GumTree Tree
-    private Tree methodToGumTree(Method method, Tree sourceTree, LineReader lr) {
+    private Tree methodToGumTree(Method method, GumTreeSource source) {
         Tree methodGT = null;
         int methodStartLine = method.getLocation().getStartLine();
         int methodEndLine = method.getLocation().getEndLine();
-        for (Tree descendant : sourceTree.getDescendants()) {
+        for (Tree descendant : source.tree.getDescendants()) {
             if (descendant.getType().toString().equals("MethodDeclaration")) {
-                int descendantStartLine = startLine(descendant, lr);
-                int descendantEndLine = endLine(descendant, lr);
+                int descendantStartLine = startLine(descendant, source.lineReader);
+                int descendantEndLine = endLine(descendant, source.lineReader);
                 if (descendantStartLine == methodStartLine && descendantEndLine == methodEndLine) {
                     methodGT = descendant;
                     break;
@@ -90,9 +90,9 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
     }
 
     // Convert CodeTracker Block to GumTree Tree
-    private Tree blockToGumTree(Block block, Tree sourceTree, LineReader lr) {
+    private Tree blockToGumTree(Block block, GumTreeSource source) {
         Tree blockGT = null;
-        for (Tree descendant : sourceTree.getDescendants()) {
+        for (Tree descendant : source.tree.getDescendants()) {
             if (descendant.getType().toString().contains("Statement") ||
                     descendant.getType().toString().equals("CatchClause") ||
                     (
@@ -100,8 +100,8 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                                     descendant.getType().toString().equals("Block")
                     )
             ) {
-                int descendantStartLine = startLine(descendant, lr);
-                int descendantEndLine = endLine(descendant, lr);
+                int descendantStartLine = startLine(descendant, source.lineReader);
+                int descendantEndLine = endLine(descendant, source.lineReader);
                 if (descendantStartLine == block.getLocation().getStartLine()
                         && descendantEndLine == block.getLocation().getEndLine()) {
                     blockGT = descendant;
@@ -218,11 +218,10 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                     GumTreeSource source = new GumTreeSource(repository, commitId, rightBlock.getFilePath());
                     GumTreeSource destination = new GumTreeSource(repository, parentCommitId, rightMethod.getFilePath());
 
-                    LineReader lrSource = getLineReader(source.fileContent);
 
                     // GT suffix to variables indicates that it is a GumTree Tree
-                    Tree rightMethodGT = methodToGumTree(rightMethod, source.tree, lrSource);
-                    Tree rightBlockGT = blockToGumTree(rightBlock, source.tree, lrSource);
+                    Tree rightMethodGT = methodToGumTree(rightMethod, source);
+                    Tree rightBlockGT = blockToGumTree(rightBlock, source);
 
                     // if destination is null, then the file doesn't exist anymore
                     if (destination == null || destination.tree == null) {
@@ -264,7 +263,6 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                         mappings = defaultMatcher.match(source.tree, destination.tree, preMappings);
                     }
 
-                    LineReader lrDestination = getLineReader(destination.fileContent);
 
                     Tree leftMethodGT = null;
                     Tree leftBlockGT = mappings.getDstForSrc(rightBlockGT);
@@ -304,8 +302,8 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                     }
 
                     // Set attributes for matching method predicate
-                    this.methodStartLineNumberTree = startLine(leftMethodGT, lrDestination);
-                    this.methodEndLineNumberTree = endLine(leftMethodGT, lrDestination);
+                    this.methodStartLineNumberTree = startLine(leftMethodGT, destination.lineReader);
+                    this.methodEndLineNumberTree = endLine(leftMethodGT, destination.lineReader);
 
                     leftModel = getUMLModel(parentCommitId, Collections.singleton(destination.filePath));
                     leftMethod = getMethod(leftModel, parentVersion, this::isEqualToMethodTree);
@@ -326,141 +324,12 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                     // Set attributes for matching block predicate
                     this.treeType = treeToBlockType.get(leftBlockGT.getType().name);
 
-                    this.blockStartLineNumberTree = startLine(leftBlockGT, lrDestination);
-                    this.blockEndLineNumberTree = endLine(leftBlockGT, lrDestination);
+                    this.blockStartLineNumberTree = startLine(leftBlockGT, destination.lineReader);
+                    this.blockEndLineNumberTree = endLine(leftBlockGT, destination.lineReader);
 
                     Block leftBlock = leftMethod.findBlock(this::isEqualToBlockTree);
-                    CodeElementRange leftBlockRange = new CodeElementRange(leftBlockGT, lrDestination);
-                    CodeElementRange rightBlockRange = new CodeElementRange(rightBlockGT, lrSource);
 
-                    boolean bodyChange = false;
-                    boolean expressionChange = false;
-                    boolean catchClauseChange = false;
-                    boolean finallyBlockChange = false;
-
-                    // get the edit script and actions performed
-                    EditScriptGenerator editScriptGenerator = new SimplifiedChawatheScriptGenerator();
-                    EditScript actions = editScriptGenerator.computeActions(mappings);
-
-                    for (Action action : actions.asList()) {
-                        CodeElementRange blockRange;
-                        LineReader lrFile;
-                        if (action.getName().contains("insert")) {
-                            blockRange = leftBlockRange;
-                            lrFile = lrDestination;
-                        } else {
-                            blockRange = rightBlockRange;
-                            lrFile = lrSource;
-                        }
-
-                        // check each action and derive the change made
-                        CodeElementRange actionRange = new CodeElementRange(action.getNode(), lrFile);
-                        if (actionOverlapsElement(actionRange, blockRange)) {
-                            ArrayList<Tree> expression = new ArrayList<>();
-                            Tree body = null;
-                            ArrayList<Tree> catchClauses = new ArrayList<>();
-                            Tree finallyBlock = null;
-                            List<Tree> processNodes;
-                            if (action.getName().equals("move-tree")){
-                                processNodes = action.getNode().getDescendants();
-                            } else {
-                                processNodes = action.getNode().getParents();
-                            }
-                            for (Tree parent : processNodes) {
-                                CodeElementRange parentRange = new CodeElementRange(parent, lrFile);
-                                // if the action parent start line matches our block's start line
-                                // we have our element
-                                // the last condition handles cases of multiple if/else blocks
-                                // where the start line doesn't match block start line
-                                if (
-                                        (parentRange.startPosition == blockRange.startPosition &&
-                                                (parent.getType().toString().contains("Statement") ||
-                                                        parent.getType().toString().equals("CatchClause") ||
-                                                        (parent.getType().toString().equals("Block") &&
-                                                                this.treeType == CodeElementType.FINALLY_BLOCK))
-                                        ) ||
-                                                (parentRange.endPosition == blockRange.endPosition &&
-                                                        parent.getType().toString().equals("IfStatement"))
-                                ) {
-                                    // obtain statement body, expression, and catch/finally positions (if any)
-                                    for (Tree child : parent.getChildren()) {
-                                        String childType = child.getType().toString();
-                                        if (childType.toLowerCase().contains("expression") ||
-                                                // handle case for enhanced-for-loop & catch expressions
-                                                childType.equals("SingleVariableDeclaration") ||
-                                                childType.equals("SimpleName")
-                                        ) {
-                                            expression.add(child);
-                                        } else if (childType.equals("Block")) {
-                                            if (body == null) {
-                                                body = child;
-                                            }
-                                            // finally blocks are just "blocks"
-                                            else if (this.treeType == CodeElementType.TRY_STATEMENT) {
-                                                finallyBlock = child;
-                                            }
-                                        } else if (childType.equals("CatchClause")) {
-                                            catchClauses.add(child);
-                                        }
-                                        // handle case for method invocation in if statement
-                                        else if (this.treeType == CodeElementType.IF_STATEMENT){
-                                            if (expression.size() == 0 && childType.equals("MethodInvocation")){
-                                                expression.add(child);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            CodeElementRange bodyRange = new CodeElementRange(body, lrFile);
-                            CodeElementRange expressionRange = new CodeElementRange(expression, lrFile);
-                            CodeElementRange catchClauseRange = new CodeElementRange(catchClauses, lrFile);
-                            CodeElementRange finallyBlockRange = new CodeElementRange(finallyBlock, lrFile);
-
-                            // check if a change was made within an expression
-                            if (actionOverlapsElement(actionRange, expressionRange)) {
-                                expressionChange = true;
-                            }
-                            // check if a change was made within the body
-                            if (actionOverlapsElement(actionRange, bodyRange)) {
-                                bodyChange = true;
-                            }
-                            // check if a change was made within a 'catch' clause
-                            if (actionOverlapsElement(actionRange, catchClauseRange)) {
-                                catchClauseChange = true;
-                            }
-
-                            // check if a change was made within the 'finally' clause
-                            if (actionOverlapsElement(actionRange, finallyBlockRange)) {
-                                finallyBlockChange = true;
-                            }
-
-                            // if all types of changes are found, break loop
-                            if (bodyChange && expressionChange && catchClauseChange && finallyBlockChange) {
-                                break;
-                            }
-                        }
-                    }
-
-                    if (expressionChange) {
-                        blockChangeHistory.addChange(leftBlock, rightBlock, ChangeFactory.forBlock(Change.Type.EXPRESSION_CHANGE));
-                    }
-
-                    if (bodyChange) {
-                        blockChangeHistory.addChange(leftBlock, rightBlock, ChangeFactory.forBlock(Change.Type.BODY_CHANGE));
-                    }
-
-                    if (catchClauseChange) {
-                        blockChangeHistory.addChange(leftBlock, rightBlock, ChangeFactory.forBlock(Change.Type.CATCH_BLOCK_CHANGE));
-                    }
-
-                    if (finallyBlockChange) {
-                        blockChangeHistory.addChange(leftBlock, rightBlock, ChangeFactory.forBlock(Change.Type.FINALLY_BLOCK_CHANGE));
-                    }
-
-                    if (!(bodyChange || expressionChange || catchClauseChange || finallyBlockChange)) {
-                        blockChangeHistory.addChange(leftBlock, rightBlock, ChangeFactory.of(AbstractChange.Type.NO_CHANGE));
-                    }
+                    addChanges(leftBlock, rightBlock, rightMethod, mappings, source, destination);
 
                     blockChangeHistory.connectRelatedNodes();
 
@@ -481,7 +350,7 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
         String cacheKey = "getMovedFilePathFromRMiner:" + commitId + ":" + rightMethod.toString();
 
         // Check if the cache contains the result for the given inputs
-        if (cache.hasKey(cacheKey)) {
+        if (cache != null && cache.hasKey(cacheKey)) {
             // Return the cached result if available
             return cache.get(cacheKey);
         }
@@ -512,11 +381,119 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
             }
         });
 
-        // Cache the result for future use
-        cache.put(cacheKey, movedFilePath[0]);
+        if (cache != null){
+            // Cache the result for future use
+            cache.put(cacheKey, movedFilePath[0]);
+        }
 
         // Return the computed result
         return movedFilePath[0];
+    }
+
+    private void addChanges(Block blockBefore, Block blockAfter, Method methodAfter, MappingStore mappings, GumTreeSource source, GumTreeSource destination){
+        boolean bodyChange = false;
+        boolean catchOrFinallyChange = false;
+        List<String> stringRepresentationBefore = blockBefore.getComposite().stringRepresentation();
+        List<String> stringRepresentationAfter = blockAfter.getComposite().stringRepresentation();
+        if (!stringRepresentationBefore.equals(stringRepresentationAfter)) {
+            if (!stringRepresentationBefore.get(0).equals(stringRepresentationAfter.get(0))) {
+                blockChangeHistory.addChange(blockBefore, blockAfter, ChangeFactory.forBlock(Change.Type.EXPRESSION_CHANGE));
+            }
+            List<String> stringRepresentationBodyBefore = stringRepresentationBefore.subList(1, stringRepresentationBefore.size());
+            List<String> stringRepresentationBodyAfter = stringRepresentationAfter.subList(1, stringRepresentationAfter.size());
+            if (!stringRepresentationBodyBefore.equals(stringRepresentationBodyAfter)) {
+                blockChangeHistory.addChange(blockBefore, blockAfter, ChangeFactory.forBlock(Change.Type.BODY_CHANGE));
+            }
+            bodyChange = true;
+        }
+        if (blockBefore.getComposite() instanceof TryStatementObject && blockAfter.getComposite() instanceof TryStatementObject) {
+            TryStatementObject tryBefore = (TryStatementObject) blockBefore.getComposite();
+            TryStatementObject tryAfter = (TryStatementObject) blockAfter.getComposite();
+            ArrayList<CompositeStatementObject> catchBlocksBefore = new ArrayList<>(tryBefore.getCatchClauses());
+            ArrayList<CompositeStatementObject> catchBlocksAfter = new ArrayList<>(tryAfter.getCatchClauses());
+            ArrayList<CompositeStatementObject> catchBlocksBeforeClone = (ArrayList<CompositeStatementObject>) catchBlocksAfter.clone();
+            for (CompositeStatementObject catchBlockAfter : catchBlocksBeforeClone) {
+                CompositeStatementObject fragment2 = catchBlockAfter;
+                Tree catchBlockAfterGT = blockToGumTree(Block.of(fragment2, methodAfter), source);
+                Tree catchBlockBeforeGT = mappings.getDstForSrc(catchBlockAfterGT);
+                CodeElementRange catchBlockAfterRange = new CodeElementRange(catchBlockAfterGT, source.lineReader);
+                CodeElementRange catchBlockBeforeRange = new CodeElementRange(catchBlockBeforeGT, destination.lineReader);
+
+                List<CompositeStatementObject> potentialFragment1 = catchBlocksBefore.stream().filter(
+                        c -> (c.getLocationInfo().getStartLine() == catchBlockBeforeRange.startLine && c.getLocationInfo().getEndLine()==catchBlockBeforeRange.endLine)
+                ).collect(Collectors.toList());
+
+                CompositeStatementObject fragment1 = null;
+                if (potentialFragment1.size() > 0){
+                    fragment1 = potentialFragment1.get(0);
+                }
+
+                if (fragment2.getLocationInfo().getCodeElementType().equals(CodeElementType.CATCH_CLAUSE) &&
+                        fragment1 != null && fragment1.getLocationInfo().getCodeElementType().equals(CodeElementType.CATCH_CLAUSE) &&
+                        tryBefore.getCatchClauses().contains(fragment1) &&
+                        tryAfter.getCatchClauses().contains(fragment2)) {
+                    List<String> catchStringRepresentationBefore = fragment1.stringRepresentation();
+                    List<String> catchStringRepresentationAfter = fragment2.stringRepresentation();
+                    catchBlocksBefore.remove(fragment1);
+                    catchBlocksAfter.remove(fragment2);
+                    if (!catchStringRepresentationBefore.equals(catchStringRepresentationAfter)) {
+                        blockChangeHistory.addChange(blockBefore, blockAfter, ChangeFactory.forBlock(Change.Type.CATCH_BLOCK_CHANGE));
+                        catchOrFinallyChange = true;
+                    }
+                }
+            }
+            Set<CompositeStatementObject> catchBlocksBeforeToRemove = new LinkedHashSet<>();
+            Set<CompositeStatementObject> catchBlocksAfterToRemove = new LinkedHashSet<>();
+            for (int i=0; i<Math.min(catchBlocksBefore.size(), catchBlocksAfter.size()); i++) {
+                List<UMLType> typesBefore = new ArrayList<>();
+                for (VariableDeclaration variableDeclaration : catchBlocksBefore.get(i).getVariableDeclarations()) {
+                    typesBefore.add(variableDeclaration.getType());
+                }
+                List<UMLType> typesAfter = new ArrayList<>();
+                for (VariableDeclaration variableDeclaration : catchBlocksAfter.get(i).getVariableDeclarations()) {
+                    typesAfter.add(variableDeclaration.getType());
+                }
+                if (typesBefore.equals(typesAfter)) {
+                    List<String> catchStringRepresentationBefore = catchBlocksBefore.get(i).stringRepresentation();
+                    List<String> catchStringRepresentationAfter = catchBlocksAfter.get(i).stringRepresentation();
+                    catchBlocksBeforeToRemove.add(catchBlocksBefore.get(i));
+                    catchBlocksAfterToRemove.add(catchBlocksAfter.get(i));
+                    if (!catchStringRepresentationBefore.equals(catchStringRepresentationAfter)) {
+                        blockChangeHistory.addChange(blockBefore, blockAfter, ChangeFactory.forBlock(Change.Type.CATCH_BLOCK_CHANGE));
+                        catchOrFinallyChange = true;
+                    }
+                }
+            }
+            catchBlocksBefore.removeAll(catchBlocksBeforeToRemove);
+            catchBlocksAfter.removeAll(catchBlocksAfterToRemove);
+            for (CompositeStatementObject catchBlockBefore : catchBlocksBefore) {
+                blockChangeHistory.addChange(blockBefore, blockAfter, ChangeFactory.forBlock(Change.Type.CATCH_BLOCK_REMOVED));
+                catchOrFinallyChange = true;
+            }
+            for (CompositeStatementObject catchBlockAfter : catchBlocksAfter) {
+                blockChangeHistory.addChange(blockBefore, blockAfter, ChangeFactory.forBlock(Change.Type.CATCH_BLOCK_ADDED));
+                catchOrFinallyChange = true;
+            }
+            if (tryBefore.getFinallyClause() != null && tryAfter.getFinallyClause() != null) {
+                List<String> finallyStringRepresentationBefore = tryBefore.getFinallyClause().stringRepresentation();
+                List<String> finallyStringRepresentationAfter = tryAfter.getFinallyClause().stringRepresentation();
+                if (!finallyStringRepresentationBefore.equals(finallyStringRepresentationAfter)) {
+                    blockChangeHistory.addChange(blockBefore, blockAfter, ChangeFactory.forBlock(Change.Type.FINALLY_BLOCK_CHANGE));
+                    catchOrFinallyChange = true;
+                }
+            }
+            else if (tryBefore.getFinallyClause() == null && tryAfter.getFinallyClause() != null) {
+                blockChangeHistory.addChange(blockBefore, blockAfter, ChangeFactory.forBlock(Change.Type.FINALLY_BLOCK_ADDED));
+                catchOrFinallyChange = true;
+            }
+            else if (tryBefore.getFinallyClause() != null && tryAfter.getFinallyClause() == null) {
+                blockChangeHistory.addChange(blockBefore, blockAfter, ChangeFactory.forBlock(Change.Type.FINALLY_BLOCK_REMOVED));
+                catchOrFinallyChange = true;
+            }
+        }
+        if (!bodyChange && !catchOrFinallyChange) {
+            blockChangeHistory.addChange(blockBefore, blockAfter, ChangeFactory.of(AbstractChange.Type.NO_CHANGE));
+        }
     }
 
     public static class GumTreeSource {
@@ -528,6 +505,7 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
         String commitId = null;
         // GumTree JDT Tree object
         Tree tree = null;
+        LineReader lineReader;
 
         public GumTreeSource(Repository repository, String commitId, String filePath) {
             try {
@@ -535,6 +513,7 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                 this.commitId = commitId;
                 this.fileContent = getFileContent(repository, commitId, filePath);
                 this.tree = new JdtTreeGenerator().generateFrom().string(this.fileContent).getRoot();
+                this.lineReader = getLineReader(fileContent);
             } catch (Exception e) {
             }
         }
