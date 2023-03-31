@@ -481,10 +481,9 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
         String cacheKey = "getMovedFilePathFromRMiner:" + commitId + ":" + rightMethod.toString();
 
         // Check if the cache contains the result for the given inputs
-        String cachedResult = cache.get(cacheKey);
-        if (cachedResult != null) {
+        if (cache.hasKey(cacheKey)) {
             // Return the cached result if available
-            return cachedResult;
+            return cache.get(cacheKey);
         }
 
         // Compute the result if it's not in the cache

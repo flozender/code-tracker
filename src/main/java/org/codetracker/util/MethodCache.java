@@ -38,6 +38,10 @@ public class MethodCache {
         }
     }
 
+    public boolean hasKey(String key) throws IOException {
+        return cacheMap.containsKey(key);
+    }
+
     private Map<String, Object> loadCacheFromFile() throws IOException {
         return objectMapper.readValue(new File(cacheFilePath), Map.class);
     }
