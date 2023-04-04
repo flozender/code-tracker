@@ -35,6 +35,8 @@ public interface History<C extends CodeElement> {
 
     Change.Type getChangeType();
 
+    Change.Type getChangeType();
+
     String getCommitId();
 
     long getCommitTime();
