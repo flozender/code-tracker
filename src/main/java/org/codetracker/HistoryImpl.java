@@ -109,7 +109,7 @@ public class HistoryImpl<N extends CodeElement> implements History<N> {
     }
 
     @Override
-    public Set<Change> getChangeList() {
+    public LinkedHashSet<Change> getChangeList() {
       return changeList;
     }
 

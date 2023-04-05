@@ -17,6 +17,10 @@ public interface CodeTracker {
         return new BlockTracker.Builder();
     }
 
+    static BlockTrackerGumTree.Builder blockTrackerGumTree() {
+        return new BlockTrackerGumTree.Builder();
+    }
+
     static ClassTracker.Builder classTracker() {
         return new ClassTracker.Builder();
     }

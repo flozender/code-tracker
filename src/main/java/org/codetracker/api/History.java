@@ -2,8 +2,8 @@ package org.codetracker.api;
 
 import org.codetracker.change.Change;
 
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 public interface History<C extends CodeElement> {
   Graph<C, Edge> getGraph();
@@ -31,7 +31,9 @@ public interface History<C extends CodeElement> {
 
     C getElementAfter();
 
-    Set<Change> getChangeList();
+    LinkedHashSet<Change> getChangeList();
+
+    Change.Type getChangeType();
 
     Change.Type getChangeType();
 

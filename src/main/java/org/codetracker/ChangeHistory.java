@@ -126,6 +126,8 @@ public class ChangeHistory<T extends BaseCodeElement> {
         return GraphImpl.subGraph(changeHistoryGraph, start);
     }
 
+    public Graph<T, Edge> getCompleteGraph() {return GraphImpl.of(changeHistoryGraph);}
+
     public Set<T> predecessors(T codeElement) {
         return changeHistoryGraph.predecessors(codeElement);
     }

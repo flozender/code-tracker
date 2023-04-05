@@ -1,11 +1,34 @@
 package org.codetracker.util;
 
+import com.github.gumtreediff.io.LineReader;
+import com.github.gumtreediff.tree.Tree;
 import gr.uom.java.xmi.UMLAnnotation;
+import gr.uom.java.xmi.UMLModel;
+import org.codetracker.BlockTrackerGumTreeImpl.CodeElementRange;
+import org.codetracker.element.Method;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.diff.DiffConfig;
+import org.eclipse.jgit.diff.DiffEntry;
+import org.eclipse.jgit.lib.Config;
+import org.eclipse.jgit.lib.ObjectReader;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revwalk.FollowFilter;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevTree;
+import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.treewalk.AbstractTreeIterator;
+import org.eclipse.jgit.treewalk.CanonicalTreeParser;
+import org.refactoringminer.rm1.GitHistoryRefactoringMinerImpl;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.StringReader;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class Util {
@@ -98,5 +121,95 @@ public class Util {
         }
 
         return toReturn;
+    }
+
+    // https://github.com/centic9/jgit-cookbook/blob/209b4d2d747af6e032d9b2c86cb82b1e7b2ca793/src/main/java/org/dstadler/jgit/porcelain/DiffRenamedFile.java
+    public static AbstractTreeIterator prepareTreeParser(Repository repository, String objectId) throws IOException {
+        try (RevWalk walk = new RevWalk(repository)) {
+            RevCommit commit = walk.parseCommit(repository.resolve(objectId));
+            RevTree tree = walk.parseTree(commit.getTree().getId());
+
+            CanonicalTreeParser treeParser = new CanonicalTreeParser();
+            try (ObjectReader reader = repository.newObjectReader()) {
+                treeParser.reset(reader, tree.getId());
+            }
+
+            walk.dispose();
+
+            return treeParser;
+        }
+    }
+
+    public static DiffEntry diffFile(Repository repo, String oldCommit, String newCommit, String path) throws IOException, GitAPIException {
+        Config config = new Config();
+        config.setBoolean("diff", null, "renames", true);
+        DiffConfig diffConfig = config.get(DiffConfig.KEY);
+        try (Git git = new Git(repo)) {
+            List<DiffEntry> diffList = git.diff().
+                    setOldTree(prepareTreeParser(repo, oldCommit)).
+                    setNewTree(prepareTreeParser(repo, newCommit)).
+                    setPathFilter(FollowFilter.create(path, diffConfig)).
+                    call();
+            if (diffList.size() == 0)
+                return null;
+            if (diffList.size() > 1)
+                throw new RuntimeException("invalid diff");
+            return diffList.get(0);
+        }
+    }
+    public static List<DiffEntry> listDiff(Repository repository, Git git, String oldCommit, String newCommit) throws GitAPIException, IOException {
+        return git.diff()
+                .setOldTree(prepareTreeParser(repository, oldCommit))
+                .setNewTree(prepareTreeParser(repository, newCommit))
+                .call();
+    }
+
+    public static String getFileContent(Repository repository, String commitId, String fileName) throws Exception {
+        if (fileName == null)
+            return null;
+        Set<String> repositoryDirectories = new LinkedHashSet<>();
+        Map<String, String> fileContents = new LinkedHashMap<>();
+        try (RevWalk walk = new RevWalk(repository)) {
+            RevCommit revCommit = walk.parseCommit(repository.resolve(commitId));
+            GitHistoryRefactoringMinerImpl.populateFileContents(repository, revCommit, Collections.singleton(fileName), fileContents, repositoryDirectories);
+            return fileContents.get(fileName);
+        }
+    }
+
+    public static LineReader getLineReader(String fileContent) throws IOException {
+        LineReader lr = new LineReader(new BufferedReader(new StringReader(fileContent)));
+        // wait till LineReader is done reading
+        while ((lr.read()) != -1) {}
+        lr.close();
+        return lr;
+    }
+
+    public static int startLine(Tree tree, LineReader lr){
+        return startLine(tree.getPos(), lr);
+    }
+
+    public static int startLine(int startPosition, LineReader lr){
+        return lr.positionFor(startPosition)[0];
+    }
+
+    public static int endLine(Tree tree, LineReader lr){
+        return endLine(tree.getEndPos(), lr);
+    }
+
+    public static int endLine(int endPosition, LineReader lr){
+        return lr.positionFor(endPosition)[0];
+    }
+
+    public static boolean actionOverlapsElement(CodeElementRange actionRange, CodeElementRange codeElementRange) {
+        return actionOverlapsElement(actionRange, codeElementRange, false);
+    }
+
+    public static boolean actionOverlapsElement(CodeElementRange actionRange, CodeElementRange codeElementRange, boolean line) {
+        if (line){
+        return actionRange.startLine <= codeElementRange.endLine
+                && actionRange.endLine >= codeElementRange.startLine;
+        }
+        return actionRange.startPosition <= codeElementRange.endPosition
+                && actionRange.endPosition >= codeElementRange.startPosition;
     }
 }
