@@ -29,6 +29,7 @@ import org.codetracker.util.MethodCache;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.lib.Repository;
+import org.refactoringminer.api.GitHistoryRefactoringMiner;
 import org.refactoringminer.api.Refactoring;
 import org.refactoringminer.api.RefactoringHandler;
 import org.refactoringminer.rm1.GitHistoryRefactoringMinerImpl;
@@ -357,7 +358,7 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
 
         // Compute the result if it's not in the cache
         final String[] movedFilePath = {null};
-        GitHistoryRefactoringMinerImpl miner = new GitHistoryRefactoringMinerImpl();
+        GitHistoryRefactoringMiner miner = new GitHistoryRefactoringMinerImpl();
         miner.detectAtCommit(repository, commitId, new RefactoringHandler() {
             @Override
             public void handle(String commitId, List<Refactoring> refactorings) {
