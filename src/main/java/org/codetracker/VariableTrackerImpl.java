@@ -271,19 +271,18 @@ public class VariableTrackerImpl extends BaseTracker implements VariableTracker 
                             List<Refactoring> refactorings = umlModelDiffAll.getRefactorings();
                             boolean flag = false;
                             for (Refactoring refactoring : refactorings) {
-                                if (RefactoringType.MOVE_AND_RENAME_OPERATION.equals(refactoring.getRefactoringType())) {
+                                if (RefactoringType.MOVE_AND_RENAME_OPERATION.equals(refactoring.getRefactoringType()) || RefactoringType.MOVE_OPERATION.equals(refactoring.getRefactoringType())) {
                                     MoveOperationRefactoring moveOperationRefactoring = (MoveOperationRefactoring) refactoring;
                                     Method movedOperation = Method.of(moveOperationRefactoring.getMovedOperation(), currentVersion);
                                     if (rightMethod.equalIdentifierIgnoringVersion(movedOperation)) {
                                         fileNames.add(moveOperationRefactoring.getOriginalOperation().getLocationInfo().getFilePath());
-                                        umlModelPairAll = getUMLModelPair(commitModel, currentMethod.getFilePath(), fileNames::contains, false);
-                                        umlModelDiffAll = umlModelPairAll.getLeft().diff(umlModelPairAll.getRight());
                                         flag = true;
-                                        break;
                                     }
                                 }
                             }
                             if (flag) {
+                                umlModelPairAll = getUMLModelPair(commitModel, currentMethod.getFilePath(), fileNames::contains, false);
+                                umlModelDiffAll = umlModelPairAll.getLeft().diff(umlModelPairAll.getRight());
                                 refactorings = umlModelDiffAll.getRefactorings();
                             }
 
@@ -428,6 +427,16 @@ public class VariableTrackerImpl extends BaseTracker implements VariableTracker 
                                     }
                                 }
                             }
+                            for (Refactoring r : bodyMapper.getRefactoringsAfterPostProcessing()) {
+                                if (r instanceof RenameVariableRefactoring) {
+                                    RenameVariableRefactoring rename = (RenameVariableRefactoring) r;
+                                    Variable matchedVariableInsideMergedMethodBody = Variable.of(rename.getRenamedVariable(), bodyMapper.getContainer2(), currentVersion);
+                                    if (matchedVariableInsideMergedMethodBody.equalIdentifierIgnoringVersion(rightVariable)) {
+                                        if (isVariableRefactored(bodyMapper.getRefactoringsAfterPostProcessing(), variables, currentVersion, parentVersion, rightVariable::equalIdentifierIgnoringVersion))
+                                            return true;
+                                    }
+                                }
+                            }
                         }
                     }
                     break;
@@ -452,6 +461,16 @@ public class VariableTrackerImpl extends BaseTracker implements VariableTracker 
                                     if (matchedVariableInsideSplitMethodBody.equalIdentifierIgnoringVersion(rightVariable)) {
                                         if (isAdded(bodyMapper, variables, currentVersion, parentVersion, rightVariable::equalIdentifierIgnoringVersion)) {
                                             return true;
+                                        }
+                                    }
+                                }
+                                for (Refactoring r : bodyMapper.getRefactoringsAfterPostProcessing()) {
+                                    if (r instanceof RenameVariableRefactoring) {
+                                        RenameVariableRefactoring rename = (RenameVariableRefactoring) r;
+                                        Variable matchedVariableInsideMergedMethodBody = Variable.of(rename.getRenamedVariable(), bodyMapper.getContainer2(), currentVersion);
+                                        if (matchedVariableInsideMergedMethodBody.equalIdentifierIgnoringVersion(rightVariable)) {
+                                            if (isVariableRefactored(bodyMapper.getRefactoringsAfterPostProcessing(), variables, currentVersion, parentVersion, rightVariable::equalIdentifierIgnoringVersion))
+                                                return true;
                                         }
                                     }
                                 }
