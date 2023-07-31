@@ -1,5 +1,3 @@
 tool,oracle,level,processing_time_avg,processing_time_median,tp,fp,fn,precision,recall
-gumtree,training,change,25096.082035,14456,3854,524,1148,88.031064,77.049180
-gumtree,training,commit,25096.082035,14456,3794,254,858,93.725296,81.556320
-gumtree,test,change,522.000000,522,1,0,0,100.000000,100.000000
-gumtree,test,commit,522.000000,522,1,0,0,100.000000,100.000000
+gumtree,training,change,25225.332988,15077,3901,525,1148,88.138274,77.262824
+gumtree,training,commit,25225.332988,15077,3838,255,858,93.769851,81.729131

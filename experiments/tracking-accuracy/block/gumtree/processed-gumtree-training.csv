@@ -744,6 +744,7 @@ junit4-RunnersFactory-createRunnersForParameters-ENHANCED_FOR_STATEMENT.json
 junit4-RunnersFactory-createRunnersForParameters-TRY_STATEMENT.json
 junit5-ClassTestDescriptor-invokeBeforeAllMethods-ENHANCED_FOR_STATEMENT.json
 junit5-ClassTestDescriptor-invokeBeforeAllMethods-IF_STATEMENT.json
+junit5-DefaultLauncher-discoverRoot-ENHANCED_FOR_STATEMENT.json
 junit5-DefaultLauncher-discoverRoot-IF_STATEMENT.json
 junit5-NodeTestTask-execute-IF_STATEMENT-1.json
 junit5-NodeTestTask-execute-IF_STATEMENT-2.json

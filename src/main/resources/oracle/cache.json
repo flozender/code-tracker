@@ -1945,5 +1945,6 @@
     "getMovedFilePathFromRMiner:4ee0d4237d9c5cb2d160a29bfc717dd9c2015173:hibernate-core/src/main/java/org.hibernate.event.internal.DefaultRefreshEventListener#onRefresh(RefreshEvent, Map)<4ee0d4237d9c5cb2d160a29bfc717dd9c2015173>": null,
     "getMovedFilePathFromRMiner:5d8d0cb7947efcf2282f7d056302dd905f348532:java-symbol-solver-core/src/main/java/com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFacade#convertToUsage(Type, Context)<5d8d0cb7947efcf2282f7d056302dd905f348532>": null,
     "getMovedFilePathFromRMiner:7d55cf4c1cac9c2f8a3a917cfadfaf921e11e2b2:javaparser-core/src/main/java/com.github.javaparser.printer.lexicalpreservation.Difference#apply(NodeText, Node)<7d55cf4c1cac9c2f8a3a917cfadfaf921e11e2b2>": null,
-    "getMovedFilePathFromRMiner:9dfbc5326b17ab48a0335efa4d82e15e6df0dfae:spring-context/src/main/java/org.springframework.context.annotation.ConfigurationClassParser#doProcessConfigurationClass(ConfigurationClass, SourceClass)<9dfbc5326b17ab48a0335efa4d82e15e6df0dfae>": null
+    "getMovedFilePathFromRMiner:9dfbc5326b17ab48a0335efa4d82e15e6df0dfae:spring-context/src/main/java/org.springframework.context.annotation.ConfigurationClassParser#doProcessConfigurationClass(ConfigurationClass, SourceClass)<9dfbc5326b17ab48a0335efa4d82e15e6df0dfae>": null,
+    "getMovedFilePathFromRMiner:78d1492242539eb0d5e36016f9dc1f9b55d76f94:java/compiler/impl/src/com.intellij.packaging.impl.artifacts.ArtifactBySourceFileFinderImpl#getFileToArtifactsMap()<78d1492242539eb0d5e36016f9dc1f9b55d76f94>": null
 }
