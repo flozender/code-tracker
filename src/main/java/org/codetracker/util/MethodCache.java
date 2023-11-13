@@ -18,6 +18,7 @@ public class MethodCache {
         if (file.exists()) {
             try {
                 this.cacheMap = loadCacheFromFile();
+                System.out.println("Loaded from cache: " + this.cacheMap.size() + " entries");
             } catch (Exception ignored){}
         }
     }
@@ -51,15 +52,18 @@ public class MethodCache {
         if (file.exists()) {
             // Load existing cache data from file
             Map<String, Object> existingCacheData = loadCacheFromFile();
-
+            System.out.println("Existing cache: " + existingCacheData.size() + " entries");
             // Merge existing cache data with current cache data
             existingCacheData.putAll(cacheMap);
 
             // Serialize merged cache data to JSON and write to file
             objectMapper.writeValue(file, existingCacheData);
+            System.out.println("Updated cache: " + existingCacheData.size() + " entries");
+
         } else {
             // Serialize cache data to JSON and write to file
             objectMapper.writeValue(file, cacheMap);
+            System.out.println("New cache: " + cacheMap.size() + " entries");
         }
     }
 }

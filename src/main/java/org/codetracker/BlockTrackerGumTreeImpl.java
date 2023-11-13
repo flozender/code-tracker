@@ -353,6 +353,7 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
         // Check if the cache contains the result for the given inputs
         if (cache != null && cache.hasKey(cacheKey)) {
             // Return the cached result if available
+            System.out.println("Path found in cache: " + cacheKey);
             return cache.get(cacheKey);
         }
 
