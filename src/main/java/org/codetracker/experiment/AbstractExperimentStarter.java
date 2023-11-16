@@ -47,7 +47,7 @@ public abstract class AbstractExperimentStarter {
 
     static {
         StringBuilder header = new StringBuilder();
-        header.append("instance,processing_time,analysed_commits,git_log_command_calls,step2,step3,step4,step5,");
+        header.append("instance,processing_time,analysed_commits,stagedTreeMatching,sameFileChanged,sameFileUnchanged,");
         for (Change.Type changeType : Change.Type.values()) {
             if (Change.Type.NO_CHANGE.equals(changeType) || Change.Type.MULTI_CHANGE.equals(changeType) || Change.Type.REMOVED.equals(changeType))
                 continue;
@@ -282,11 +282,9 @@ public abstract class AbstractExperimentStarter {
                 content.append("\"").append(historyInfo.getElementKey()).append("\",")
                         .append(refactoringMinerProcessingTime).append(",")
                         .append(historyReport.getAnalysedCommits()).append(",")
-                        .append(historyReport.getGitLogCommandCalls()).append(",")
-                        .append(historyReport.getStep2()).append(",")
-                        .append(historyReport.getStep3()).append(",")
-                        .append(historyReport.getStep4()).append(",")
-                        .append(historyReport.getStep5()).append(",")
+                        .append(historyReport.getStagedTreeMatching()).append(",")
+                        .append(historyReport.getSameFileChanged()).append(",")
+                        .append(historyReport.getSameFileUnchanged()).append(",")
                 ;
 
                 for (Change.Type changeType : Change.Type.values()) {

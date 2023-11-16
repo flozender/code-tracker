@@ -154,6 +154,10 @@ public class HistoryImpl<N extends CodeElement> implements History<N> {
     private int step3 = 0;
     private int step4 = 0;
     private int step5 = 0;
+    private int stagedTreeMatching = 0;
+    private int sameFileUnchanged = 0;
+    private int sameFileChanged = 0;
+
 
     public int getAnalysedCommits() {
       return analysedCommits;
@@ -201,6 +205,30 @@ public class HistoryImpl<N extends CodeElement> implements History<N> {
 
     public void step5PlusPlus() {
       step5++;
+    }
+
+    public int getStagedTreeMatching() {
+      return stagedTreeMatching;
+    }
+
+    public void stagedTreeMatchingPlusPlus() {
+      stagedTreeMatching++;
+    }
+
+    public int getSameFileUnchanged() {
+      return sameFileUnchanged;
+    }
+
+    public void sameFileUnchangedPlusPlus() {
+      sameFileUnchanged++;
+    }
+
+    public int getSameFileChanged() {
+      return sameFileChanged;
+    }
+
+    public void sameFileChangedPlusPlus() {
+      sameFileChanged++;
     }
   }
 }

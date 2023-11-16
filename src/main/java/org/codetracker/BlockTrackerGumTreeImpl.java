@@ -191,6 +191,7 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                     if (rightBlock == null) {
                         continue;
                     }
+                    historyReport.analysedCommitsPlusPlus();
 
                     if ("0".equals(parentCommitId)) {
                         Method leftMethod = Method.of(rightMethod.getUmlOperation(), parentVersion);
@@ -205,6 +206,7 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                     Method leftMethod = getMethod(leftModel, parentVersion, rightMethod::equalIdentifierIgnoringVersion);
                     // If the method has stayed the same between both commits
                     if (leftMethod != null) {
+                        historyReport.sameFileUnchangedPlusPlus();
                         continue;
                     }
 
@@ -255,13 +257,15 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
                     GumTreeSource postSource = new GumTreeSource(repository, parentCommitId, source.filePath);
                     // check if the postSource file exists in the parent commit
                     // TODO: handle cases where postSource was renamed
-                    if (movedFilePath == null || (postSource == null || postSource.tree == null)) {
+                    if (movedFilePath == null || postSource.tree == null) {
                         mappings = defaultMatcher.match(source.tree, destination.tree);
+                        historyReport.sameFileChangedPlusPlus();
                     } else {
                         // postSource does exist, so first create mappings for postSource w/ source
                         MappingStore preMappings = defaultMatcher.match(source.tree, postSource.tree);
                         // and find mappings (for the method?) with the destination among unmapped nodes
                         mappings = defaultMatcher.match(source.tree, destination.tree, preMappings);
+                        historyReport.stagedTreeMatchingPlusPlus();
                     }
 
 
@@ -353,7 +357,6 @@ public class BlockTrackerGumTreeImpl extends BaseTracker implements BlockTracker
         // Check if the cache contains the result for the given inputs
         if (cache != null && cache.hasKey(cacheKey)) {
             // Return the cached result if available
-            System.out.println("Path found in cache: " + cacheKey);
             return cache.get(cacheKey);
         }
 
