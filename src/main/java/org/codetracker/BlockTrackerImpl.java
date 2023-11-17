@@ -15,7 +15,10 @@ import org.codetracker.change.ChangeFactory;
 import org.codetracker.element.Block;
 import org.codetracker.element.Method;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.refactoringminer.api.Churn;
 import org.refactoringminer.api.Refactoring;
 import org.refactoringminer.api.RefactoringMinerTimedOutException;
 import org.refactoringminer.api.RefactoringType;
@@ -126,6 +129,7 @@ public class BlockTrackerImpl extends BaseTracker implements BlockTracker {
                         historyReport.step2PlusPlus();
                         continue;
                     }
+                    historyReport.setChurn(getChurn(commitId, parentCommitId).getChurn());
                     //CHANGE BODY OR DOCUMENT
                     leftMethod = getMethod(leftModel, parentVersion, rightMethod::equalIdentifierIgnoringVersionAndDocumentAndBody);
                     //check if there is another method in leftModel with identical bodyHashCode to the rightMethod
@@ -823,6 +827,13 @@ public class BlockTrackerImpl extends BaseTracker implements BlockTracker {
             }
         }
         return false;
+    }
+
+    private Churn getChurn(String commitIdString, String parentCommitIdString) throws Exception {
+        ObjectId commitId = ObjectId.fromString(commitIdString);
+        RevCommit revCommit  = gitService.createRevsWalkBetweenCommits(repository, parentCommitIdString,commitIdString).iterator().next();
+        Churn churn = gitService.churn(repository, revCommit);
+        return churn;
     }
 
 }

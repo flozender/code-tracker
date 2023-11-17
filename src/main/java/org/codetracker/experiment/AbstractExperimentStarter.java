@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 import static org.codetracker.util.FileUtil.writeToFile;
 
 public abstract class AbstractExperimentStarter {
-    protected final static String FOLDER_TO_CLONE = "tmp/";
+    protected final static String FOLDER_TO_CLONE = "../CodeTracker-API/tmp/";
     protected static final String SUMMARY_RESULT_FILE_NAME_FORMAT = "experiments/tracking-accuracy/%s/%s/summary-%s-%s.csv";
     protected final static String SUMMARY_RESULT_HEADER;
     protected static final String DETAILED_RESULT_HEADER = "file_name, repository,element_key,parent_commit_id,commit_id,commit_time, change_type,element_file_before,element_file_after,element_name_before,element_name_after,result,comment" + System.lineSeparator();
@@ -47,7 +47,7 @@ public abstract class AbstractExperimentStarter {
 
     static {
         StringBuilder header = new StringBuilder();
-        header.append("instance,processing_time,analysed_commits,git_log_command_calls,step2,step3,step4,step5,");
+        header.append("instance,processing_time,analysed_commits,git_log_command_calls,step2,step3,step4,step5,churn,");
         for (Change.Type changeType : Change.Type.values()) {
             if (Change.Type.NO_CHANGE.equals(changeType) || Change.Type.MULTI_CHANGE.equals(changeType) || Change.Type.REMOVED.equals(changeType))
                 continue;
@@ -287,6 +287,7 @@ public abstract class AbstractExperimentStarter {
                         .append(historyReport.getStep3()).append(",")
                         .append(historyReport.getStep4()).append(",")
                         .append(historyReport.getStep5()).append(",")
+                        .append(historyReport.getChurn()).append(",")
                 ;
 
                 for (Change.Type changeType : Change.Type.values()) {

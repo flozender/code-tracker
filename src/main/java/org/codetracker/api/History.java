@@ -24,6 +24,8 @@ public interface History<C extends CodeElement> {
     int getStep4();
 
     int getStep5();
+
+    int getChurn();
   }
 
   interface HistoryInfo<C extends CodeElement> extends Comparable<HistoryInfo<C>> {

@@ -163,6 +163,7 @@ public class HistoryImpl<N extends CodeElement> implements History<N> {
     private int step3 = 0;
     private int step4 = 0;
     private int step5 = 0;
+    private int churn = 0;
 
     public int getAnalysedCommits() {
       return analysedCommits;
@@ -196,6 +197,10 @@ public class HistoryImpl<N extends CodeElement> implements History<N> {
       return step5;
     }
 
+    public int getChurn() {
+      return churn;
+    }
+
     public void step2PlusPlus() {
       step2++;
     }
@@ -210,6 +215,10 @@ public class HistoryImpl<N extends CodeElement> implements History<N> {
 
     public void step5PlusPlus() {
       step5++;
+    }
+
+    public void setChurn(int churn) {
+      this.churn += churn;
     }
   }
 }
