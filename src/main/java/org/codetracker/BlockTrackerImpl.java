@@ -15,7 +15,6 @@ import org.codetracker.change.ChangeFactory;
 import org.codetracker.element.Block;
 import org.codetracker.element.Method;
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.refactoringminer.api.Churn;
@@ -830,10 +829,8 @@ public class BlockTrackerImpl extends BaseTracker implements BlockTracker {
     }
 
     private Churn getChurn(String commitIdString, String parentCommitIdString) throws Exception {
-        ObjectId commitId = ObjectId.fromString(commitIdString);
         RevCommit revCommit  = gitService.createRevsWalkBetweenCommits(repository, parentCommitIdString,commitIdString).iterator().next();
-        Churn churn = gitService.churn(repository, revCommit);
-        return churn;
+        return gitService.churn(repository, revCommit);
     }
 
 }
