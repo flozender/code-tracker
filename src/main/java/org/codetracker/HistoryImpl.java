@@ -1,15 +1,16 @@
 package org.codetracker;
 
 import com.google.common.graph.EndpointPair;
+import java.util.*;
 import org.codetracker.api.CodeElement;
 import org.codetracker.api.Edge;
 import org.codetracker.api.Graph;
 import org.codetracker.api.History;
 import org.codetracker.change.Change;
-
-import java.util.*;
+import org.codetracker.util.ProcessingInfo;
 
 public class HistoryImpl<N extends CodeElement> implements History<N> {
+
   private final Graph<N, Edge> graph;
   private final HistoryReportImpl historyReport;
   private final List<HistoryInfo<N>> historyInfoList;
@@ -20,7 +21,9 @@ public class HistoryImpl<N extends CodeElement> implements History<N> {
     this.historyInfoList = processHistory(graph);
   }
 
-  private static <T extends CodeElement> List<HistoryInfo<T>> processHistory(Graph<T, Edge> graph) {
+  private static <T extends CodeElement> List<HistoryInfo<T>> processHistory(
+    Graph<T, Edge> graph
+  ) {
     List<HistoryInfo<T>> historyInfoList = new ArrayList<>();
     if (graph == null) return historyInfoList;
 
@@ -29,17 +32,17 @@ public class HistoryImpl<N extends CodeElement> implements History<N> {
     for (EndpointPair<T> edge : edges) {
       Edge edgeValue = graph.getEdgeValue(edge).get();
       if (Change.Type.NO_CHANGE.equals(edgeValue.getType())) continue;
-      HistoryInfoImpl<T> historyInfoImpl =
-          new HistoryInfoImpl<>(
-              edge.source(),
-              edge.target(),
-              edgeValue.getChangeList(),
-              edgeValue.getType(),
-              edge.source().getVersion().getId(),
-              edge.target().getVersion().getId(),
-              edge.target().getVersion().getTime(),
-              edge.target().getVersion().getAuthoredTime(),
-              edge.target().getVersion().getAuthorName());
+      HistoryInfoImpl<T> historyInfoImpl = new HistoryInfoImpl<>(
+        edge.source(),
+        edge.target(),
+        edgeValue.getChangeList(),
+        edgeValue.getType(),
+        edge.source().getVersion().getId(),
+        edge.target().getVersion().getId(),
+        edge.target().getVersion().getTime(),
+        edge.target().getVersion().getAuthoredTime(),
+        edge.target().getVersion().getAuthorName()
+      );
       historyInfoList.add(historyInfoImpl);
     }
     Collections.sort(historyInfoList);
@@ -61,7 +64,9 @@ public class HistoryImpl<N extends CodeElement> implements History<N> {
     return historyInfoList;
   }
 
-  public static class HistoryInfoImpl<C extends CodeElement> implements HistoryInfo<C> {
+  public static class HistoryInfoImpl<C extends CodeElement>
+    implements HistoryInfo<C> {
+
     private final C elementBefore;
     private final C elementAfter;
     private final Set<Change> changeList;
@@ -82,15 +87,16 @@ public class HistoryImpl<N extends CodeElement> implements History<N> {
      * @param committerName Committer Name
      */
     public HistoryInfoImpl(
-        C elementBefore,
-        C elementAfter,
-        Set<Change> changeList,
-        Change.Type changeType,
-        String parentCommitId,
-        String commitId,
-        long commitTime,
-        long authoredTime,
-        String committerName) {
+      C elementBefore,
+      C elementAfter,
+      Set<Change> changeList,
+      Change.Type changeType,
+      String parentCommitId,
+      String commitId,
+      long commitTime,
+      long authoredTime,
+      String committerName
+    ) {
       this.elementBefore = elementBefore;
       this.elementAfter = elementAfter;
       this.changeList = changeList;
@@ -121,7 +127,7 @@ public class HistoryImpl<N extends CodeElement> implements History<N> {
     public Change.Type getChangeType() {
       return changeType;
     }
-    
+
     @Override
     public String getCommitId() {
       return commitId;
@@ -149,7 +155,8 @@ public class HistoryImpl<N extends CodeElement> implements History<N> {
 
     @Override
     public int compareTo(HistoryInfo<C> toCompare) {
-      return Comparator.comparing(HistoryInfo<C>::getCommitTime)
+      return Comparator
+        .comparing(HistoryInfo<C>::getCommitTime)
         .thenComparing(HistoryInfo<C>::getChangeType)
         .compare(this, toCompare);
     }
@@ -163,6 +170,7 @@ public class HistoryImpl<N extends CodeElement> implements History<N> {
     private int step3 = 0;
     private int step4 = 0;
     private int step5 = 0;
+    private HashMap<String, ProcessingInfo> processingInfo = new HashMap<>();
 
     public int getAnalysedCommits() {
       return analysedCommits;
@@ -210,6 +218,32 @@ public class HistoryImpl<N extends CodeElement> implements History<N> {
 
     public void step5PlusPlus() {
       step5++;
+    }
+
+    public void addProcessingInfo(
+      String commitId,
+      String fileName,
+      long processingTime,
+      boolean move
+    ) {
+      if (commitId == null) {
+        return;
+      }
+      if (processingInfo.containsKey(commitId)) {
+        return;
+      }
+      processingInfo.put(
+        commitId,
+        new ProcessingInfo(commitId, fileName, processingTime, move)
+      );
+    }
+
+    public ProcessingInfo getProcessingInfo(String commitId) {
+      return processingInfo.getOrDefault(commitId, new ProcessingInfo());
+    }
+
+    public HashMap<String, ProcessingInfo> getProcessingInfo() {
+      return processingInfo;
     }
   }
 }

@@ -1,9 +1,10 @@
 package org.codetracker.api;
 
-import org.codetracker.change.Change;
-
+import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
+import org.codetracker.change.Change;
+import org.codetracker.util.ProcessingInfo;
 
 public interface History<C extends CodeElement> {
   Graph<C, Edge> getGraph();
@@ -24,9 +25,14 @@ public interface History<C extends CodeElement> {
     int getStep4();
 
     int getStep5();
+
+    ProcessingInfo getProcessingInfo(String commitId);
+
+    HashMap<String, ProcessingInfo> getProcessingInfo();
   }
 
-  interface HistoryInfo<C extends CodeElement> extends Comparable<HistoryInfo<C>> {
+  interface HistoryInfo<C extends CodeElement>
+    extends Comparable<HistoryInfo<C>> {
     C getElementBefore();
 
     C getElementAfter();
