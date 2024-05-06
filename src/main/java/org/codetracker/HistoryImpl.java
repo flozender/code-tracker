@@ -224,7 +224,8 @@ public class HistoryImpl<N extends CodeElement> implements History<N> {
       String commitId,
       String fileName,
       long processingTime,
-      boolean move
+      boolean move,
+      boolean change
     ) {
       if (commitId == null) {
         return;
@@ -234,7 +235,7 @@ public class HistoryImpl<N extends CodeElement> implements History<N> {
       }
       processingInfo.put(
         commitId,
-        new ProcessingInfo(commitId, fileName, processingTime, move)
+        new ProcessingInfo(commitId, fileName, processingTime, move, change)
       );
     }
 

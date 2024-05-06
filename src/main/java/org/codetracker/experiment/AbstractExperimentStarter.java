@@ -41,7 +41,7 @@ public abstract class AbstractExperimentStarter {
     "file_name, repository,element_key,parent_commit_id,commit_id,commit_time, change_type,element_file_before,element_file_after,element_name_before,element_name_after,result,comment" +
     System.lineSeparator();
   protected static final String TIME_RESULT_HEADER =
-    "file_name,commit_id,processing_time,move" + System.lineSeparator();
+    "file_name,commit_id,processing_time,move,change" + System.lineSeparator();
   protected static final String DETAILED_RESULT_FILE_NAME_FORMAT =
     "experiments/tracking-accuracy/%s/%s/detailed-%s-%s.csv";
   protected static final String TIME_RESULT_FILE_NAME_FORMAT =
@@ -53,7 +53,7 @@ public abstract class AbstractExperimentStarter {
     "%s,\"%s\",\"%s\",%s,%s,%d,%s,%s,%s,\"%s\",\"%s\",%s,\"%s\"" +
     System.lineSeparator();
   protected static final String TIME_CONTENT_FORMAT =
-    "%s,%s,%d,%b" + System.lineSeparator();
+    "%s,%s,%d,%b,%b" + System.lineSeparator();
   protected static final String FINAL_RESULT_FORMAT =
     "%s,%s,%s,%f,%d,%d,%d,%d,%f,%f" + System.lineSeparator();
   protected static final String ERROR_FILE_NAME_FORMAT =
@@ -392,12 +392,19 @@ public abstract class AbstractExperimentStarter {
     String oracleFileName,
     String commitId,
     long processingTime,
-    boolean move
+    boolean move,
+    boolean change
   ) throws IOException {
     writeToFile(
       getTimeResultFileName(oracleName),
       TIME_RESULT_HEADER,
-      getTimeResultContent(oracleFileName, commitId, processingTime, move),
+      getTimeResultContent(
+        oracleFileName,
+        commitId,
+        processingTime,
+        move,
+        change
+      ),
       StandardOpenOption.APPEND
     );
   }
@@ -439,14 +446,16 @@ public abstract class AbstractExperimentStarter {
     String oracleFileName,
     String commitId,
     long processingTime,
-    boolean move
+    boolean move,
+    boolean change
   ) {
     return String.format(
       TIME_CONTENT_FORMAT,
       oracleFileName,
       commitId,
       processingTime,
-      move
+      move,
+      change
     );
   }
 
@@ -512,7 +521,6 @@ public abstract class AbstractExperimentStarter {
 
         History.HistoryReport historyReport = history.getHistoryReport();
         HashMap<String, ProcessingInfo> processingInfoMap = historyReport.getProcessingInfo();
-
         for (String commitId : processingInfoMap.keySet()) {
           ProcessingInfo processingInfo = processingInfoMap.get(commitId);
           writeToTimeFile(
@@ -520,7 +528,8 @@ public abstract class AbstractExperimentStarter {
             fileName,
             commitId,
             processingInfo.getProcessingTime(),
-            processingInfo.getMove()
+            processingInfo.getMove(),
+            processingInfo.getChange()
           );
         }
 

@@ -48,6 +48,7 @@ public class BlockTrackerImpl extends BaseTracker implements BlockTracker {
     String prevCommit = null;
     long startTime = 0;
     boolean move = false;
+    boolean change = false;
 
     HistoryImpl.HistoryReportImpl historyReport = new HistoryImpl.HistoryReportImpl();
     try (Git git = new Git(repository)) {
@@ -106,17 +107,19 @@ public class BlockTrackerImpl extends BaseTracker implements BlockTracker {
         if (analysedCommits.containsAll(commits)) break;
         for (String commitId : commits) {
           if (analysedCommits.contains(commitId)) continue;
-          //System.out.println("processing " + commitId);
+          // System.out.println("processing " + commitId);
           long commitProcessingTime = (System.nanoTime() - startTime) / 1000000;
           historyReport.addProcessingInfo(
             prevCommit,
             filePath,
             commitProcessingTime,
-            move
+            move,
+            change
           );
           prevCommit = commitId;
           startTime = System.nanoTime();
           move = false;
+          change = false;
           analysedCommits.add(commitId);
           Version currentVersion = gitRepository.getVersion(commitId);
           String parentCommitId = gitRepository.getParentId(commitId);
@@ -167,7 +170,8 @@ public class BlockTrackerImpl extends BaseTracker implements BlockTracker {
               prevCommit,
               filePath,
               commitProcessingTime,
-              false
+              false,
+              true
             );
             break;
           }
@@ -185,6 +189,7 @@ public class BlockTrackerImpl extends BaseTracker implements BlockTracker {
             historyReport.step2PlusPlus();
             continue;
           }
+          change = true;
           //CHANGE BODY OR DOCUMENT
           leftMethod =
             getMethod(
@@ -629,7 +634,8 @@ public class BlockTrackerImpl extends BaseTracker implements BlockTracker {
                   prevCommit,
                   filePath,
                   commitProcessingTime,
-                  false
+                  false,
+                  true
                 );
                 break;
               }
@@ -637,6 +643,14 @@ public class BlockTrackerImpl extends BaseTracker implements BlockTracker {
           }
         }
       }
+      long commitProcessingTime = (System.nanoTime() - startTime) / 1000000;
+      historyReport.addProcessingInfo(
+        prevCommit,
+        filePath,
+        commitProcessingTime,
+        move,
+        change
+      );
       return new HistoryImpl<>(
         changeHistory.get().getCompleteGraph(),
         historyReport
